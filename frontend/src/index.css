@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #7A1F2E;
+  --color-primary-hover: #63182A;
+  --color-secondary: #DD9A34;
+  --color-accent: #5B7A3A;
+  --color-text: #3B2A1E;
+  --color-bg: #FDFBF8;
+  --color-border: #E7E1D8;
+
+  --font-serif: "Georgia", "Times New Roman", serif;
+
+  --text-display: 2.25rem;
+  --text-heading: 1.5rem;
+  --text-body: 1.0625rem;
+  --text-caption: 0.875rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    transition: color 0.15s ease;
+  }
+
+  a:hover {
+    color: var(--color-primary);
+  }
+
+  h1,
+  h2 {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  h3 {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* Primary / filled button: bg darkens to primary-hover on hover */
+  .btn-primary {
+    display: inline-block;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border: none;
+    border-radius: 4px;
+    padding: 0.75rem 1.5rem;
+    font-family: inherit;
+    font-size: var(--text-body);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-primary-hover);
+    color: var(--color-bg);
+  }
+
+  /* Secondary / outline button: fills with maroon + white text on hover */
+  .btn-outline {
+    display: inline-block;
+    background: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 4px;
+    padding: 0.5rem 1.125rem;
+    font-family: inherit;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .btn-outline:hover {
+    background: var(--color-primary);
+    color: var(--color-bg);
+  }
+
+  /* Nav link: text color moves to maroon on hover */
+  .nav-link {
+    font-size: var(--text-caption);
+    font-weight: 400;
+    color: var(--color-text);
+    opacity: 0.7;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--color-primary);
+    opacity: 1;
+  }
+
+  /* Inline text link: maroon on hover, per site-wide link rule */
+  .text-link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    transition: color 0.15s ease;
+  }
+
+  .text-link:hover {
+    color: var(--color-primary);
+  }
+
+  .card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .container {
+    max-width: 680px;
+    padding: 0 1.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1.25rem;
+  }
+}

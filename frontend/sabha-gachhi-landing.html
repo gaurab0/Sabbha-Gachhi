@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sabha Gachhi — Saurath Sabha Gachhi Panji Tradition</title>
+    <style>
+      :root {
+        --color-primary: #7A1F2E;
+        --color-primary-hover: #63182A;
+        --color-secondary: #DD9A34;
+        --color-accent: #5B7A3A;
+        --color-text: #3B2A1E;
+        --color-bg: #FDFBF8;
+        --color-border: #E7E1D8;
+        --size-display: 36px;
+        --size-heading: 24px;
+        --size-body: 17px;
+        --size-caption: 14px;
+      }
+
+      *, *::before, *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Georgia", "Times New Roman", serif;
+        color: var(--color-text);
+        background: var(--color-bg);
+        line-height: 1.6;
+        font-size: var(--size-body);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: var(--color-accent);
+        text-decoration: underline;
+        transition: color 0.15s ease;
+      }
+
+      a:hover {
+        color: var(--color-primary);
+      }
+
+      .container {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 0 2rem;
+      }
+
+      /* ── Header ── */
+
+      header {
+        border-bottom: 1px solid var(--color-border);
+        padding: 1.25rem 0;
+      }
+
+      header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .site-name {
+        font-size: var(--size-body);
+        font-weight: 600;
+        color: var(--color-primary);
+        letter-spacing: 0.01em;
+        text-decoration: none;
+      }
+
+      .site-name:hover {
+        color: var(--color-primary);
+      }
+
+      .header-nav {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+
+      .nav-link {
+        font-size: var(--size-caption);
+        font-weight: 400;
+        color: var(--color-text);
+        opacity: 0.7;
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+
+      .nav-link:hover {
+        color: var(--color-primary);
+        opacity: 1;
+      }
+
+      .btn-login {
+        display: inline-block;
+        background: transparent;
+        color: var(--color-primary);
+        border: 1px solid var(--color-primary);
+        border-radius: 4px;
+        padding: 0.5rem 1.125rem;
+        font-family: inherit;
+        font-size: var(--size-caption);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+
+      .btn-login:hover {
+        background: var(--color-primary);
+        color: var(--color-bg);
+      }
+
+      .btn-signup {
+        display: inline-block;
+        background: var(--color-primary);
+        color: var(--color-bg);
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1.125rem;
+        font-family: inherit;
+        font-size: var(--size-caption);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+
+      .btn-signup:hover {
+        background: var(--color-primary-hover);
+      }
+
+      /* ── Hero ── */
+
+      .hero {
+        padding: 6rem 0 5rem;
+        text-align: center;
+      }
+
+      .hero-kicker {
+        font-size: var(--size-caption);
+        color: var(--color-text);
+        opacity: 0.6;
+        letter-spacing: 0.02em;
+        margin-bottom: 1rem;
+      }
+
+      .hero h1 {
+        font-size: var(--size-display);
+        font-weight: 600;
+        color: var(--color-primary);
+        line-height: 1.3;
+        margin-bottom: 1.25rem;
+      }
+
+      .hero p {
+        font-size: var(--size-body);
+        max-width: 540px;
+        margin: 0 auto 2.5rem;
+        line-height: 1.7;
+      }
+
+      .btn-primary {
+        display: inline-block;
+        background: var(--color-primary);
+        color: var(--color-bg);
+        border: none;
+        border-radius: 4px;
+        padding: 0.75rem 1.5rem;
+        font-family: inherit;
+        font-size: var(--size-body);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+
+      .btn-primary:hover {
+        background: var(--color-primary-hover);
+      }
+
+      /* ── Mission ── */
+
+      .mission {
+        padding: 4rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .mission h2 {
+        font-size: var(--size-heading);
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: 1rem;
+      }
+
+      .mission p {
+        font-size: var(--size-body);
+        line-height: 1.75;
+        max-width: 600px;
+      }
+
+      .mission p + p {
+        margin-top: 1rem;
+      }
+
+      /* ── How It Works ── */
+
+      .how-it-works {
+        padding: 4rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .how-it-works h2 {
+        font-size: var(--size-heading);
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: 2rem;
+      }
+
+      .steps {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+      }
+
+      .step {
+        display: flex;
+        gap: 1.25rem;
+        align-items: flex-start;
+      }
+
+      .step-number {
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--color-primary);
+        border-radius: 50%;
+        font-size: var(--size-caption);
+        font-weight: 600;
+        color: var(--color-primary);
+      }
+
+      .step-content h3 {
+        font-size: var(--size-body);
+        font-weight: 600;
+        color: var(--color-text);
+        margin-bottom: 0.25rem;
+      }
+
+      .step-content p {
+        font-size: var(--size-body);
+        line-height: 1.65;
+      }
+
+      /* ── Privacy Callout ── */
+
+      .privacy {
+        padding: 4rem 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .privacy-card {
+        border-left: 2px solid var(--color-accent);
+        padding: 1.5rem 1.75rem;
+        background: transparent;
+      }
+
+      .privacy-card h2 {
+        font-size: var(--size-heading);
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: 0.75rem;
+      }
+
+      .privacy-card ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .privacy-card li {
+        font-size: var(--size-body);
+        line-height: 1.6;
+        padding-left: 1.25rem;
+        position: relative;
+      }
+
+      .privacy-card li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.55em;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--color-accent);
+      }
+
+      /* ── Footer ── */
+
+      footer {
+        border-top: 1px solid var(--color-border);
+        padding: 2rem 0;
+        margin-top: 1rem;
+      }
+
+      footer .container {
+        text-align: center;
+        font-size: var(--size-caption);
+        color: var(--color-text);
+        opacity: 0.5;
+        letter-spacing: 0.02em;
+      }
+
+      /* ── Responsive: Tablet ── */
+
+      @media (max-width: 1024px) {
+        .container {
+          max-width: 680px;
+          padding: 0 1.75rem;
+        }
+
+        .hero {
+          padding: 5rem 0 4rem;
+        }
+      }
+
+      /* ── Responsive: Mobile ── */
+
+      @media (max-width: 640px) {
+        .container {
+          padding: 0 1.25rem;
+        }
+
+        header .container {
+          flex-wrap: wrap;
+          gap: 0.75rem;
+        }
+
+        .header-nav {
+          width: 100%;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 0.75rem 1rem;
+        }
+
+        .hero {
+          padding: 3.5rem 0 2.5rem;
+        }
+
+        .hero h1 {
+          font-size: var(--size-heading);
+        }
+
+        .btn-primary {
+          width: 100%;
+          text-align: center;
+        }
+
+        .mission,
+        .how-it-works,
+        .privacy {
+          padding: 2.5rem 0;
+        }
+
+        .step {
+          gap: 1rem;
+        }
+
+        .step-number {
+          width: 1.75rem;
+          height: 1.75rem;
+        }
+
+        footer {
+          padding: 1.5rem 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <a href="#" class="site-name">Sabha Gachhi</a>
+        <nav class="header-nav">
+          <a href="#about" class="nav-link">About</a>
+          <a href="#how-it-works" class="nav-link">How It Works</a>
+          <a href="#login" class="btn-login">Log In</a>
+          <a href="#signup" class="btn-signup">Sign Up</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <p class="hero-kicker">Saurath Sabha Gachhi Panji Tradition</p>
+        <h1>Continuing a Tradition of<br>Dignified Matchmaking</h1>
+        <p>
+          A private, non-profit platform preserving the panji tradition —
+          dowry-free, genealogy-verified matchmaking by invitation only.
+        </p>
+        <a href="#request" class="btn-primary">Request an Invitation</a>
+      </div>
+    </section>
+
+    <section class="mission" id="about">
+      <div class="container">
+        <h2>Our Mission</h2>
+        <p>
+          For centuries, the Saurath Sabha Gachhi tradition has brought families
+          together through genealogy-verified introductions — rooted in dignity,
+          free from dowry. Sabha Gachhi continues this work in a private,
+          non-profit setting.
+        </p>
+        <p>
+          We are not a dating service. We are a community platform that
+          respects the depth of family heritage in finding a life partner.
+        </p>
+      </div>
+    </section>
+
+    <section class="how-it-works" id="how-it-works">
+      <div class="container">
+        <h2>How It Works</h2>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-number">1</span>
+            <div class="step-content">
+              <h3>Receive an Invitation</h3>
+              <p>
+                Access is extended through existing members of the Sabha
+                community. There is no public sign-up.
+              </p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-number">2</span>
+            <div class="step-content">
+              <h3>Submit Family Genealogy</h3>
+              <p>
+                Your family's panji record is submitted and verified
+                through our established network of genealogists.
+              </p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-number">3</span>
+            <div class="step-content">
+              <h3>Begin Introductions</h3>
+              <p>
+                Once verified, we facilitate introductions between
+                compatible families through the Sabha network.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="privacy">
+      <div class="container">
+        <div class="privacy-card">
+          <h2>Your Privacy Is Absolute</h2>
+          <ul>
+            <li>Invite-only — no public profiles or searchable database</li>
+            <li>No personal data is sold or shared with third parties</li>
+            <li>Non-profit — no advertising, no monetization of your information</li>
+            <li>Genealogy records are handled with the same discretion as the traditional Sabha</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        Sabha Gachhi &middot; Non-profit &middot; By invitation only
+      </div>
+    </footer>
+  </body>
+</html>
