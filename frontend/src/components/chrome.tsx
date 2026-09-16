@@ -36,11 +36,15 @@ export function Navbar() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-t-border py-8 mt-4">
-      <div className="container text-center text-caption text-text/50 tracking-wider">
+    <footer className="border-t border-t-border py-8">
+      <div className="container flex max-w-255 flex-wrap items-center justify-center gap-x-8 gap-y-3 text-center md:justify-between md:text-left">
+        <p className="m-0 text-[0.83rem] text-text/50">
+          Sabha Gachhi &middot; Saurath Panji Tradition &middot; Non-Profit
+          Community Trust
+        </p>
         <nav
           aria-label="Footer navigation"
-          className="flex items-center justify-center gap-x-5 gap-y-2 flex-wrap mb-4">
+          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <Link to="/about" className="nav-link">
             About
           </Link>
@@ -54,7 +58,6 @@ export function Footer() {
             Panjikar sign-in
           </Link>
         </nav>
-        <div>Sabha Gachhi &middot; Non-profit &middot; By invitation only</div>
       </div>
     </footer>
   );
