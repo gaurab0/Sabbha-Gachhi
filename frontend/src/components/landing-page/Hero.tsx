@@ -22,7 +22,7 @@ export function Hero() {
     <section className="pt-[clamp(3.5rem,7vw,5.25rem)] pb-[clamp(3rem,6vw,4.5rem)]">
       <div className="container">
         <div className="mx-auto max-w-175 text-center">
-          <p className="m-0 mb-[1.4rem] flex items-center justify-center gap-[0.9rem] font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
+          <p className="m-0 mb-[1.4rem] flex items-center justify-center gap-[0.9rem] font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase max-sm:gap-2 max-sm:text-[0.68rem] max-sm:tracking-widest max-sm:[&>span]:hidden">
             <span
               aria-hidden="true"
               className="inline-block h-px w-8 bg-secondary"
@@ -33,7 +33,7 @@ export function Hero() {
               className="inline-block h-px w-8 bg-secondary"
             />
           </p>
-          <h1 className="m-0 mb-[1.3rem] text-[clamp(2.4rem,5vw,3.3rem)] leading-[1.16] font-medium tracking-[-0.01em] text-balance">
+          <h1 className="m-0 mb-[1.3rem] text-[clamp(2.4rem,5vw,3.3rem)] leading-[1.16] font-medium tracking-[-0.01em] text-balance max-sm:text-3xl">
             Continuing a Tradition of
             <br />
             <em className="font-medium">Dignified Matchmaking</em>
@@ -43,7 +43,7 @@ export function Hero() {
             tradition — dowry-free, genealogy-verified matchmaking by invitation
             only.
           </p>
-          <div className="mb-14 flex flex-wrap items-center justify-center gap-[0.8rem]">
+          <div className="mb-14 flex flex-wrap items-center justify-center gap-[0.8rem] max-sm:flex-col max-sm:items-stretch">
             <Link to="/register" className="btn-primary font-sans">
               Request an Invitation
             </Link>

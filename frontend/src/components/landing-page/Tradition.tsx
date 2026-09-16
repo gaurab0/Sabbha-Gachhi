@@ -23,7 +23,7 @@ export function Tradition() {
       className="pt-[clamp(3rem,6vw,5rem)] pb-[clamp(3.5rem,7vw,5.5rem)]">
       <div className="container grid max-w-6xl items-start gap-[clamp(2.5rem,6vw,5rem)] max-md:grid-cols-1 max-md:gap-10 md:grid-cols-[1.3fr_1fr]">
         <div>
-          <p className="m-0 mb-[1.15rem] flex items-center gap-3 font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
+          <p className="m-0 mb-[1.15rem] flex items-center gap-3 font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase max-sm:text-[0.7rem]">
             <span
               aria-hidden="true"
               className="inline-block h-px w-8 bg-secondary"

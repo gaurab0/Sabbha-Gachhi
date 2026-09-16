@@ -12,7 +12,7 @@ export function Cta() {
           panji roots, request an introduction through a verified community
           sponsor.
         </p>
-        <Link to="/register" className="btn-primary font-sans">
+        <Link to="/register" className="btn-primary font-sans max-sm:w-full">
           Request an Invitation
         </Link>
       </div>
