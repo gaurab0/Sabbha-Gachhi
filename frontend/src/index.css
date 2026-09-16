@@ -753,6 +753,87 @@
     color: var(--color-text);
   }
 
+  /* ── Landing tradition section ── */
+
+  .tradition-section {
+    padding-top: clamp(3rem, 6vw, 5rem);
+    padding-bottom: clamp(3.5rem, 7vw, 5.5rem);
+  }
+
+  .tradition-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: clamp(2.5rem, 6vw, 5rem);
+    align-items: start;
+  }
+
+  .section-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.15rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 62%, var(--color-bg));
+  }
+
+  .tradition-title {
+    margin: 0 0 1.6rem;
+    font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+    font-weight: 500;
+    line-height: 1.22;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tradition-body p {
+    margin: 0 0 1.25rem;
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--color-text) 88%, var(--color-bg));
+  }
+
+  .tradition-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .tradition-faq {
+    display: flex;
+    flex-direction: column;
+    gap: 2.1rem;
+    margin: 0;
+  }
+
+  .tradition-faq-item {
+    margin: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1.15rem;
+  }
+
+  .tradition-faq-item dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 75%, var(--color-bg));
+  }
+
+  .tradition-faq-item dd {
+    margin: 0.55rem 0 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: color-mix(in srgb, var(--color-text) 88%, var(--color-bg));
+  }
+
+  @media (max-width: 768px) {
+    .tradition-grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+  }
+
   @media (max-width: 640px) {
     .site-header {
       flex-wrap: wrap;

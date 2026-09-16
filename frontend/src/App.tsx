@@ -84,6 +84,75 @@ function LandingPage() {
         </div>
       </section>
 
+      <section id="tradition" className="tradition-section">
+        <div className="container tradition-grid max-w-6xl">
+          <div>
+            <p className="section-eyebrow">
+              <span aria-hidden="true" className="hero-eyebrow-rule" />§ 01 —
+              The Tradition
+            </p>
+            <h2 className="tradition-title">
+              Before there were profiles,
+              <br />
+              there were panjis.
+            </h2>
+            <div className="tradition-body">
+              <p>
+                Every family keeps its story in the panji — a handwritten
+                registry maintained across generations by hereditary
+                genealogists, the panjikars. Before any marriage, the record is
+                consulted: which line is unbroken, which branch may join which.
+              </p>
+              <p>
+                Saurath Sabha Gachhi was where that consultation became a
+                congregation. Families gathering beneath the mango orchard, the
+                gachhi, meeting panjikars face to face with the panji open
+                before them.
+              </p>
+            </div>
+          </div>
+          <dl className="tradition-faq">
+            <div className="tradition-faq-item">
+              <dt>What is the Sabha?</dt>
+              <dd>
+                The historic gathering of Maithil families in Saurath where
+                matches were arranged with the consent and verified backing of
+                the community.
+              </dd>
+            </div>
+            <div className="tradition-faq-item">
+              <dt>What is the Panji?</dt>
+              <dd>
+                A family&rsquo;s authentic genealogical record, kept, updated,
+                and carefully cross-verified by traditional panjikars.
+              </dd>
+            </div>
+            <div className="tradition-faq-item">
+              <dt>What has changed?</dt>
+              <dd>
+                Nothing essential. The same sacred rules of lineage and honor
+                apply — carried thoughtfully onto a quieter, secure modern
+                platform.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="border-t border-border">
+        <div className="max-w-255 mx-auto text-center py-20 md:py-28">
+          <blockquote className="m-0 flex flex-col items-center gap-4">
+            <p className="m-0 italic text-balance text-[clamp(1.5rem,3.4vw,2.1rem)] leading-[1.45] text-text/90">
+              &ldquo;We are not a dating service. We are a family record, opened
+              carefully, for one purpose.&rdquo;
+            </p>
+            <footer className="text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/55">
+              — The Sabha Charter
+            </footer>
+          </blockquote>
+        </div>
+      </section>
+
       <section id="about" className="page-section border-t border-t-border">
         <div className="container">
           <h2 className="text-heading mb-4">Our Mission</h2>
