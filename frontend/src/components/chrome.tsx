@@ -11,12 +11,12 @@ export function Navbar() {
       <div className="container container--wide flex items-center justify-between gap-6 py-[0.85rem] max-sm:flex-wrap max-sm:gap-3">
         <Link
           to="/"
-          className="whitespace-nowrap text-[1.2rem] font-bold tracking-[-0.01em] text-primary no-underline hover:text-primary-hover">
+          className="font-serif whitespace-nowrap text-[1.2rem] font-bold tracking-[-0.01em] text-primary no-underline hover:text-primary-hover">
           Sabha Gachhi
         </Link>
         <nav
           aria-label="Primary navigation"
-          className="flex flex-wrap items-center gap-[1.4rem] max-sm:gap-[0.9rem]">
+          className="flex flex-wrap items-center gap-[1.4rem] font-sans max-sm:gap-[0.9rem]">
           <NavLink to="/about" className="nav-link max-sm:hidden">
             About
           </NavLink>
@@ -46,13 +46,13 @@ export function Footer() {
   return (
     <footer className="border-t border-t-border py-8">
       <div className="container flex max-w-255 flex-wrap items-center justify-center gap-x-8 gap-y-3 text-center md:justify-between md:text-left">
-        <p className="m-0 text-[0.83rem] text-text/50">
+        <p className="m-0 font-sans text-[0.83rem] text-text/50">
           Sabha Gachhi &middot; Saurath Panji Tradition &middot; Non-Profit
           Community Trust
         </p>
         <nav
           aria-label="Footer navigation"
-          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-sans">
           <Link to="/about" className="nav-link">
             About
           </Link>

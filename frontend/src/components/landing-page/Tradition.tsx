@@ -23,7 +23,7 @@ export function Tradition() {
       className="pt-[clamp(3rem,6vw,5rem)] pb-[clamp(3.5rem,7vw,5.5rem)]">
       <div className="container grid max-w-6xl items-start gap-[clamp(2.5rem,6vw,5rem)] max-md:grid-cols-1 max-md:gap-10 md:grid-cols-[1.3fr_1fr]">
         <div>
-          <p className="m-0 mb-[1.15rem] flex items-center gap-3 text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
+          <p className="m-0 mb-[1.15rem] flex items-center gap-3 font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
             <span
               aria-hidden="true"
               className="inline-block h-px w-8 bg-secondary"
@@ -55,7 +55,7 @@ export function Tradition() {
             <div
               key={item.term}
               className="border-t border-border pt-[1.15rem]">
-              <dt className="text-[0.75rem] font-semibold tracking-widest text-text/75 uppercase">
+              <dt className="font-sans text-[0.75rem] font-semibold tracking-widest text-text/75 uppercase">
                 {item.term}
               </dt>
               <dd className="m-0 mt-[0.55rem] text-base leading-[1.65] text-text/88">

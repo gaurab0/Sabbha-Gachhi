@@ -22,7 +22,7 @@ export function Hero() {
     <section className="pt-[clamp(3.5rem,7vw,5.25rem)] pb-[clamp(3rem,6vw,4.5rem)]">
       <div className="container">
         <div className="mx-auto max-w-175 text-center">
-          <p className="m-0 mb-[1.4rem] flex items-center justify-center gap-[0.9rem] text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
+          <p className="m-0 mb-[1.4rem] flex items-center justify-center gap-[0.9rem] font-sans text-[0.78rem] font-medium tracking-[0.14em] text-text/62 uppercase">
             <span
               aria-hidden="true"
               className="inline-block h-px w-8 bg-secondary"
@@ -44,12 +44,12 @@ export function Hero() {
             only.
           </p>
           <div className="mb-14 flex flex-wrap items-center justify-center gap-[0.8rem]">
-            <Link to="/register" className="btn-primary">
+            <Link to="/register" className="btn-primary font-sans">
               Request an Invitation
             </Link>
             <Link
               to="/about"
-              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-transparent px-6 py-3 text-body font-medium text-text no-underline transition-[border-color,background-color] duration-160 hover:border-[color-mix(in_srgb,var(--color-text)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-border)_22%,transparent)]">
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-transparent px-6 py-3 font-sans text-body font-medium text-text no-underline transition-[border-color,background-color] duration-160 hover:border-[color-mix(in_srgb,var(--color-text)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-border)_22%,transparent)]">
               Read Our Charter
             </Link>
           </div>
@@ -62,7 +62,7 @@ export function Hero() {
                     ? ""
                     : "max-sm:border-t max-sm:border-border max-sm:pt-[1.4rem] sm:border-l sm:border-border sm:pl-8"
                 }>
-                <dt className="text-[0.72rem] font-medium tracking-[0.12em] text-text/[0.55] uppercase">
+                <dt className="font-sans text-[0.72rem] font-medium tracking-[0.12em] text-text/[0.55] uppercase">
                   {item.term}
                 </dt>
                 <dd className="m-0 mt-[0.45rem] text-[1.02rem] leading-normal">

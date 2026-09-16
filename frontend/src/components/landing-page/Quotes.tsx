@@ -7,7 +7,7 @@ export function Quotes() {
             &ldquo;We are not a dating service. We are a family record, opened
             carefully, for one purpose.&rdquo;
           </p>
-          <footer className="text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/55">
+          <footer className="font-sans text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/55">
             — The Sabha Charter
           </footer>
         </blockquote>
