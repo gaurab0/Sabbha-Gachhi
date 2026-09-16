@@ -153,74 +153,124 @@ function LandingPage() {
         </div>
       </section>
 
-      <section id="about" className="page-section border-t border-t-border">
-        <div className="container">
-          <h2 className="text-heading mb-4">Our Mission</h2>
-          <p className="text-body max-w-[600px] leading-relaxed">
-            For centuries, the Saurath Sabha Gachhi tradition has brought
-            families together through genealogy-verified introductions — rooted
-            in dignity, free from dowry. Sabha Gachhi continues this work in a
-            private, non-profit setting.
+      <section id="how-it-works" className="border-t border-border">
+        <div className="container max-w-6xl text-center py-16 md:py-24">
+          <p className="m-0 mb-5 flex items-center justify-center gap-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/60">
+            <span aria-hidden="true" className="hero-eyebrow-rule" />§ 02 — The
+            Method
           </p>
-          <p className="text-body max-w-[600px] leading-relaxed mt-4">
-            We are not a dating service. We are a community platform that
-            respects the depth of family heritage in finding a life partner.
+          <h2 className="m-0 mb-4 font-medium tracking-[-0.01em] text-primary text-[clamp(1.8rem,3vw,2.4rem)]">
+            How Sabha Gachhi Works
+          </h2>
+          <p className="mx-auto mb-12 md:mb-14 max-w-140 leading-[1.65] text-text/75">
+            A deliberate, three-stage pathway designed for utmost solemnity and
+            authentic verification.
           </p>
-        </div>
-      </section>
-
-      <section
-        id="how-it-works"
-        className="page-section border-t border-t-border">
-        <div className="container">
-          <h2 className="text-heading mb-8">How It Works</h2>
-          <ol className="flex flex-col gap-7">
+          <ol className="m-0 grid list-none gap-5 p-0 text-left md:grid-cols-3">
             {[
               {
-                title: "Receive an Invitation",
-                body: "Access is extended through existing members of the Sabha community. There is no public sign-up.",
+                stage: "Stage 01",
+                title: "Invitation from Community",
+                body: "Access is extended solely through verified families already within the Sabha circle. There is no open registration or public listing.",
               },
               {
-                title: "Submit Family Genealogy",
-                body: "Your family's panji record is submitted and verified through our established network of genealogists.",
+                stage: "Stage 02",
+                title: "Panji Verification",
+                body: "Your family's ancestral records (mool and gotra) are examined and certified through our network of recognized genealogists (*Panjikars*).",
               },
               {
-                title: "Begin Introductions",
-                body: "Once verified, we facilitate introductions between compatible families through the Sabha network.",
+                stage: "Stage 03",
+                title: "Facilitated Introductions",
+                body: "Once genealogy and non-negotiable dowry-free commitments are affirmed, introductions take place discreetly between respected families.",
               },
-            ].map((step, i) => (
-              <li key={step.title} className="flex gap-5 items-start">
-                <span className="step-number">{i + 1}</span>
-                <div>
-                  <h3 className="text-body font-semibold mb-1">{step.title}</h3>
-                  <p className="text-body leading-relaxed">{step.body}</p>
-                </div>
+            ].map((step) => (
+              <li
+                key={step.stage}
+                className="rounded-lg border border-border p-7">
+                <p className="m-0 mb-3 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-primary">
+                  {step.stage}
+                </p>
+                <h3 className="m-0 mb-3 text-[1.15rem] font-semibold leading-snug">
+                  {step.title}
+                </h3>
+                <p className="m-0 text-[0.98rem] leading-[1.65] text-text/80">
+                  {step.body}
+                </p>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      <section id="privacy" className="page-section border-t border-t-border">
-        <div className="container">
-          <div className="quote-block">
-            <h2 className="text-heading mb-3">Your Privacy Is Absolute</h2>
-            <ul className="flex flex-col gap-2">
-              {[
-                "Invite-only — no public profiles or searchable database",
-                "No personal data is sold or shared with third parties",
-                "Non-profit — no advertising, no monetization of your information",
-                "Genealogy records are handled with the same discretion as the traditional Sabha",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="text-body relative pl-5 leading-relaxed">
-                  <span className="absolute left-0 top-[0.55em] w-[5px] h-[5px] rounded-full bg-accent" />
-                  {item}
-                </li>
-              ))}
-            </ul>
+      <section id="about" className="border-t border-border">
+        <div className="container grid max-w-255 items-start gap-12 py-16 md:grid-cols-[0.8fr_1.4fr] md:gap-16 md:py-24 lg:gap-20">
+          <div>
+            <p className="m-0 mb-5 flex items-center gap-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/60">
+              <span aria-hidden="true" className="hero-eyebrow-rule" />§ 03 —
+              Core Standards
+            </p>
+            <h2 className="m-0 font-medium tracking-[-0.01em] text-primary text-[clamp(1.8rem,3vw,2.4rem)] leading-[1.2]">
+              Our Unbending
+              <br />
+              Principles
+            </h2>
           </div>
+          <div className="flex flex-col">
+            {[
+              {
+                title: "Dowry-Free Commitment",
+                body: "Participation requires an irrevocable personal commitment to zero dowry or financial demands in any form. We treat the commercialization of marriage as an affront to our lineage.",
+              },
+              {
+                title: "Genealogical Authenticity",
+                body: "Every introduction rests upon verified panji lineage, honoring the ancient scientific prevention of close consanguinity across seven paternal and maternal degrees.",
+              },
+              {
+                title: "Mutual Dignity",
+                body: "Both sides meet on equal terms as honored partners in community continuity, with decisions guided by mutual respect, temperament, and shared values.",
+              },
+            ].map((item, i, arr) => (
+              <div
+                key={item.title}
+                className={
+                  i < arr.length - 1 ? "mb-8 border-b border-border pb-8" : ""
+                }>
+                <h3 className="m-0 mb-2.5 text-[1.15rem] font-semibold leading-snug">
+                  {item.title}
+                </h3>
+                <p className="m-0 leading-[1.7] text-text/80">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" className="border-t border-border">
+        <div className="container max-w-255 py-16 md:py-24">
+          <p className="m-0 mb-5 flex items-center gap-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/60">
+            <span aria-hidden="true" className="hero-eyebrow-rule" />§ 04 —
+            Transparency
+          </p>
+          <h2 className="m-0 mb-5 font-medium tracking-[-0.01em] text-primary text-[clamp(1.8rem,3vw,2.4rem)] leading-[1.2]">
+            Absolute Discretion by Design
+          </h2>
+          <p className="m-0 mb-10 max-w-155 leading-[1.7] text-text/85">
+            We recognize that family records and matrimonial inquiries require
+            confidential stewardship. Our infrastructure is purpose-built to
+            eliminate digital exposure.
+          </p>
+          <ul className="m-0 grid list-disc gap-x-12 gap-y-6 p-0 pl-5 marker:text-accent sm:grid-cols-2">
+            {[
+              "Zero searchable databases or publicly indexed candidate listings",
+              "No commercial advertising, monetization, or third-party data broker sharing",
+              "Strict non-profit governance overseen by respected community trustees",
+              "Genealogy records guarded with the solemn discretion of traditional Panjikars",
+            ].map((item) => (
+              <li key={item} className="pl-1 leading-[1.65] text-text/85">
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </>
