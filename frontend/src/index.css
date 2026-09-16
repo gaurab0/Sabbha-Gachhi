@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #7A1F2E;
-  --color-primary-hover: #63182A;
-  --color-secondary: #DD9A34;
-  --color-accent: #5B7A3A;
-  --color-text: #3B2A1E;
-  --color-bg: #FDFBF8;
-  --color-border: #E7E1D8;
+  --color-primary: #7a1f2e;
+  --color-primary-hover: #63182a;
+  --color-secondary: #dd9a34;
+  --color-accent: #5b7a3a;
+  --color-text: #3b2a1e;
+  --color-bg: #fdfbf8;
+  --color-border: #e7e1d8;
 
   --font-serif: "Georgia", "Times New Roman", serif;
 
@@ -156,7 +156,11 @@
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    transition: background-color var(--transition-ui), transform var(--transition-ui), color var(--transition-ui), opacity var(--transition-ui);
+    transition:
+      background-color var(--transition-ui),
+      transform var(--transition-ui),
+      color var(--transition-ui),
+      opacity var(--transition-ui);
   }
 
   .btn-primary:hover {
@@ -190,7 +194,11 @@
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    transition: background-color var(--transition-ui), color var(--transition-ui), transform var(--transition-ui), opacity var(--transition-ui);
+    transition:
+      background-color var(--transition-ui),
+      color var(--transition-ui),
+      transform var(--transition-ui),
+      opacity var(--transition-ui);
   }
 
   .btn-outline:hover {
@@ -216,7 +224,9 @@
     opacity: 0.7;
     text-decoration: none;
     padding: 0.45rem 0.1rem;
-    transition: color var(--transition-ui), opacity var(--transition-ui);
+    transition:
+      color var(--transition-ui),
+      opacity var(--transition-ui);
   }
 
   .nav-link:hover {
@@ -248,7 +258,9 @@
     border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 1.5rem;
-    transition: border-color var(--transition-ui), background-color var(--transition-ui),
+    transition:
+      border-color var(--transition-ui),
+      background-color var(--transition-ui),
       transform var(--transition-ui);
   }
 
@@ -260,7 +272,11 @@
   }
 
   .card-link:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+    border-color: color-mix(
+      in srgb,
+      var(--color-primary) 45%,
+      var(--color-border)
+    );
     background-color: #faf7f1;
     transform: translateY(-1px);
   }
@@ -292,7 +308,9 @@
     font-family: inherit;
     font-size: var(--text-body);
     color: var(--color-text);
-    transition: border-color var(--transition-ui), background-color var(--transition-ui),
+    transition:
+      border-color var(--transition-ui),
+      background-color var(--transition-ui),
       box-shadow var(--transition-ui);
   }
 
@@ -301,7 +319,8 @@
   .textarea:focus {
     border-color: var(--color-primary);
     background: #fffefa;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   .input:disabled,
@@ -359,7 +378,11 @@
   }
 
   .badge--success {
-    border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
+    border-color: color-mix(
+      in srgb,
+      var(--color-accent) 50%,
+      var(--color-border)
+    );
   }
 
   .badge--success .badge__dot {
@@ -378,7 +401,9 @@
     opacity: 0.7;
     text-decoration: underline;
     cursor: pointer;
-    transition: color 0.15s ease, opacity 0.15s ease;
+    transition:
+      color 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .btn-quiet:hover {
@@ -399,7 +424,9 @@
     color: var(--color-text);
     opacity: 0.7;
     cursor: pointer;
-    transition: color 0.15s ease, opacity 0.15s ease;
+    transition:
+      color 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .tab:hover {
@@ -508,7 +535,8 @@
     width: 1em;
     height: 1em;
     vertical-align: -0.125em;
-    border: 2px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+    border: 2px solid
+      color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: mithila-spin 0.8s linear infinite;
@@ -531,14 +559,225 @@
   .mh-field textarea:focus {
     outline: 0;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   .mh-btn,
   .mh-topic-chip,
   .mh-back-link {
-    transition: background-color var(--transition-ui), color var(--transition-ui),
-      border-color var(--transition-ui), transform var(--transition-ui), opacity var(--transition-ui);
+    transition:
+      background-color var(--transition-ui),
+      color var(--transition-ui),
+      border-color var(--transition-ui),
+      transform var(--transition-ui),
+      opacity var(--transition-ui);
+  }
+
+  /* ── Landing header ── */
+
+  .announcement-bar {
+    margin: 0;
+    padding: 0.55rem var(--space-inline);
+    border-bottom: 1px solid var(--color-border);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: color-mix(in srgb, var(--color-text) 62%, var(--color-bg));
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-block: 0.85rem;
+  }
+
+  .site-brand {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-primary);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .site-brand:hover {
+    color: var(--color-primary-hover);
+  }
+
+  .site-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.4rem;
+    flex-wrap: wrap;
+  }
+
+  /* Compact button used for header actions */
+  .btn-sm {
+    min-height: 2.35rem;
+    padding: 0.5rem 1.15rem;
+    font-size: 0.875rem;
+  }
+
+  /* Quiet secondary button (hero "Read Our Charter"): hairline border,
+     dark text, fills nothing on hover — just a firmer border. */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    padding: 0.75rem 1.5rem;
+    font-family: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      border-color var(--transition-ui),
+      background-color var(--transition-ui);
+  }
+
+  .btn-ghost:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--color-text) 40%,
+      var(--color-border)
+    );
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-border) 22%, transparent);
+  }
+
+  /* ── Landing hero ── */
+
+  .hero-section {
+    padding-top: clamp(3.5rem, 7vw, 5.25rem);
+    padding-bottom: clamp(3rem, 6vw, 4.5rem);
+  }
+
+  .hero-inner {
+    max-width: 700px;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .hero-eyebrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.9rem;
+    margin: 0 0 1.4rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 62%, var(--color-bg));
+  }
+
+  .hero-eyebrow-rule {
+    display: inline-block;
+    width: 2rem;
+    height: 1px;
+    background: var(--color-secondary);
+  }
+
+  .hero-title {
+    margin: 0 0 1.3rem;
+    font-size: clamp(2.4rem, 5vw, 3.3rem);
+    font-weight: 500;
+    line-height: 1.16;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  .hero-subtitle {
+    max-width: 600px;
+    margin: 0 auto 2.1rem;
+    font-size: var(--text-body);
+    line-height: 1.65;
+    color: color-mix(in srgb, var(--color-text) 82%, var(--color-bg));
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 3.5rem;
+  }
+
+  .hero-proof {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin: 0;
+    padding: 1.8rem 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .hero-proof-item {
+    margin: 0;
+  }
+
+  .hero-proof-item + .hero-proof-item {
+    border-left: 1px solid var(--color-border);
+    padding-left: 2rem;
+  }
+
+  .hero-proof-item dt {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 55%, var(--color-bg));
+  }
+
+  .hero-proof-item dd {
+    margin: 0.45rem 0 0;
+    font-size: 1.02rem;
+    line-height: 1.5;
+    color: var(--color-text);
+  }
+
+  @media (max-width: 640px) {
+    .site-header {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .site-nav {
+      gap: 0.9rem;
+    }
+
+    .site-nav .nav-link {
+      display: none;
+    }
+
+    .hero-proof {
+      grid-template-columns: 1fr;
+      gap: 1.4rem;
+    }
+
+    .hero-proof-item + .hero-proof-item {
+      border-left: none;
+      border-top: 1px solid var(--color-border);
+      padding-left: 0;
+      padding-top: 1.4rem;
+    }
   }
 }
 
