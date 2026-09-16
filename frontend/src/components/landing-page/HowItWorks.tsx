@@ -21,7 +21,7 @@ export function HowItWorks() {
     <section id="how-it-works" className="border-t border-border">
       <div className="container max-w-6xl text-center py-16 md:py-24">
         <p className="m-0 mb-5 flex items-center justify-center gap-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/60">
-          <span aria-hidden="true" className="hero-eyebrow-rule" />§ 02 — The
+          <span aria-hidden="true" className="inline-block h-px w-8 bg-secondary" />§ 02 — The
           Method
         </p>
         <h2 className="m-0 mb-4 font-medium tracking-[-0.01em] text-primary text-[clamp(1.8rem,3vw,2.4rem)]">

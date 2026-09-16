@@ -19,7 +19,7 @@ export function Standards() {
       <div className="container grid max-w-255 items-start gap-12 py-16 md:grid-cols-[0.8fr_1.4fr] md:gap-16 md:py-24 lg:gap-20">
         <div>
           <p className="m-0 mb-5 flex items-center gap-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-text/60">
-            <span aria-hidden="true" className="hero-eyebrow-rule" />§ 03 — Core
+            <span aria-hidden="true" className="inline-block h-px w-8 bg-secondary" />§ 03 — Core
             Standards
           </p>
           <h2 className="m-0 font-medium tracking-[-0.01em] text-primary text-[clamp(1.8rem,3vw,2.4rem)] leading-[1.2]">

@@ -4,28 +4,36 @@ import { Link, NavLink } from "react-router-dom";
 export function Navbar() {
   return (
     <header className="bg-bg border-b border-b-border">
-      <p className="announcement-bar">
+      <p className="m-0 border-b border-border px-(--space-inline) py-[0.55rem] text-center font-sans text-[0.78rem] tracking-[0.01em] text-text/62">
         A private community initiative preserving Mithila&apos;s Panji tradition
         &middot; By referral &amp; genealogy verification only
       </p>
-      <div className="container container--wide site-header">
-        <Link to="/" className="site-brand">
+      <div className="container container--wide flex items-center justify-between gap-6 py-[0.85rem] max-sm:flex-wrap max-sm:gap-3">
+        <Link
+          to="/"
+          className="whitespace-nowrap text-[1.2rem] font-bold tracking-[-0.01em] text-primary no-underline hover:text-primary-hover">
           Sabha Gachhi
         </Link>
-        <nav aria-label="Primary navigation" className="site-nav">
-          <NavLink to="/about" className="nav-link">
+        <nav
+          aria-label="Primary navigation"
+          className="flex flex-wrap items-center gap-[1.4rem] max-sm:gap-[0.9rem]">
+          <NavLink to="/about" className="nav-link max-sm:hidden">
             About
           </NavLink>
-          <NavLink to="/mela" className="nav-link">
+          <NavLink to="/mela" className="nav-link max-sm:hidden">
             Mela
           </NavLink>
-          <NavLink to="/support" className="nav-link">
+          <NavLink to="/support" className="nav-link max-sm:hidden">
             Support
           </NavLink>
-          <Link to="/status" className="btn-outline btn-sm whitespace-nowrap">
+          <Link
+            to="/status"
+            className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
             Sign In
           </Link>
-          <Link to="/register" className="btn-primary btn-sm whitespace-nowrap">
+          <Link
+            to="/register"
+            className="btn-primary min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
             Request Invite
           </Link>
         </nav>
