@@ -7,3 +7,4 @@ class RegistrationsConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from . import tasks  # noqa: F401 — ensure Celery tasks are registered

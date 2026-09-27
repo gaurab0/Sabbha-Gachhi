@@ -14,8 +14,12 @@ import { Tradition } from "./components/landing-page/Tradition";
 import { ConcernRoute } from "./routes/ConcernRoute";
 import { ProposalRoute } from "./routes/ProposalRoute";
 import { PublicLayout } from "./routes/PublicLayout";
-import { StatusLookup } from "./routes/StatusLookup";
 import { StatusRoute } from "./routes/StatusRoute";
+import TokenCheckPage from "./components/TokenCheckPage";
+import { LoginPage } from "./components/LoginPage";
+import { SignupPage } from "./components/SignupPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 
 function LandingPage() {
   return (
@@ -38,14 +42,52 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/mela" element={<SaurathMelaPage />} />
-        <Route path="/register/*" element={<RegistrationFlow />} />
-        <Route path="/status" element={<StatusLookup />} />
-        <Route path="/status/:reference" element={<StatusRoute />} />
-        <Route path="/status/match/:matchId" element={<ProposalRoute />} />
         <Route path="/support" element={<SupportPage />} />
-        <Route path="/concern" element={<ConcernRoute />} />
+        <Route path="/status-check" element={<TokenCheckPage />} />
+        <Route
+          path="/register/*"
+          element={
+            <ProtectedRoute>
+              <RegistrationFlow />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/status"
+          element={
+            <ProtectedRoute>
+              <StatusRoute />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/status/:reference"
+          element={
+            <ProtectedRoute>
+              <StatusRoute />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/status/match/:matchId"
+          element={
+            <ProtectedRoute>
+              <ProposalRoute />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/concern"
+          element={
+            <ProtectedRoute>
+              <ConcernRoute />
+            </ProtectedRoute>
+          }
+        />
       </Route>
-      <Route path="/panjikar/*" element={<PanjikarPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/panjikar/*" element={<AdminRoute><PanjikarPage /></AdminRoute>} />
     </Routes>
   );
 }

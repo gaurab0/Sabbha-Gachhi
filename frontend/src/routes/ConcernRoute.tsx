@@ -12,10 +12,9 @@ export function ConcernRoute() {
       registrationId={reference}
       onSubmit={async (submission) => {
         await submitConcernReport({
-          registration_reference_text: submission.registrationId,
           topic: submission.topic,
           description: submission.description,
-          contact_back: submission.contactBack,
+          contactBack: submission.contactBack,
         });
       }}
       onBackToStatus={() => navigate(-1)}

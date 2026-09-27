@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
+    'accounts',
     'registrations',
 ]
 
@@ -79,6 +82,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+AUTH_USER_MODEL = "accounts.User"
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'status_check': '5/hour',
+    },
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
@@ -87,7 +112,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django_mongodb_backend',
         'HOST': 'mongodb://localhost:27017/',
-        'NAME': 'sabha_gachhi',
+        'NAME': 'test_sabha_gachhi',
     }
 }
 
@@ -143,3 +168,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Celery — async match engine
+# ---------------------------------------------------------------------------
+
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_IMPORTS = ('registrations.tasks',)
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_DISABLE_RATE_LIMITS = True

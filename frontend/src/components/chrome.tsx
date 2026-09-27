@@ -2,17 +2,15 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ListIcon, XIcon } from "@phosphor-icons/react";
+import { useAuth } from "../context/useAuth";
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
+  const { isAuthenticated, logout } = useAuth();
 
   return (
     <header className="bg-bg border-b border-b-border shadow-xs">
-      {/* <p className="m-0 border-b border-border px-(--space-inline) py-[0.55rem] text-center font-sans text-[0.78rem] tracking-[0.01em] text-text/62 max-sm:hidden">
-        A private community initiative preserving Mithila&apos;s Panji tradition
-        &middot; By referral &amp; genealogy verification only
-      </p> */}
       <div className="container container--wide flex items-center justify-between gap-6 py-[0.85rem]">
         <Link
           to="/"
@@ -31,16 +29,23 @@ export function Navbar() {
           <NavLink to="/support" className="nav-link">
             Support
           </NavLink>
-          <Link
-            to="/status"
-            className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
-            Sign In
-          </Link>
-          <Link
-            to="/register"
-            className="btn-primary min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
-            Request Invite
-          </Link>
+          <NavLink to="/status-check" className="nav-link">
+            Check Status
+          </NavLink>
+          {isAuthenticated ? (
+            <button type="button" className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm" onClick={logout}>
+              Sign Out
+            </button>
+          ) : (
+            <>
+              <Link to="/login" className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
+                Log In
+              </Link>
+              <Link to="/register" className="btn-primary min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
+                Request Invite
+              </Link>
+            </>
+          )}
         </nav>
         <button
           type="button"
@@ -58,37 +63,33 @@ export function Navbar() {
           aria-label="Mobile navigation"
           className="border-t border-border shadow-xs font-sans sm:hidden">
           <div className="container container--wide flex flex-col gap-1 py-3">
-            <NavLink
-              to="/about"
-              onClick={closeMenu}
-              className="nav-link py-2 text-base">
+            <NavLink to="/about" onClick={closeMenu} className="nav-link py-2 text-base">
               About
             </NavLink>
-            <NavLink
-              to="/mela"
-              onClick={closeMenu}
-              className="nav-link py-2 text-base">
+            <NavLink to="/mela" onClick={closeMenu} className="nav-link py-2 text-base">
               Mela
             </NavLink>
-            <NavLink
-              to="/support"
-              onClick={closeMenu}
-              className="nav-link py-2 text-base">
+            <NavLink to="/support" onClick={closeMenu} className="nav-link py-2 text-base">
               Support
             </NavLink>
+            <NavLink to="/status-check" onClick={closeMenu} className="nav-link py-2 text-base">
+              Check Status
+            </NavLink>
             <div className="mt-2 flex flex-col gap-2 pb-1">
-              <Link
-                to="/status"
-                onClick={closeMenu}
-                className="btn-outline min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                onClick={closeMenu}
-                className="btn-primary min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
-                Request Invite
-              </Link>
+              {isAuthenticated ? (
+                <button type="button" className="btn-outline min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm" onClick={() => { logout(); closeMenu(); }}>
+                  Sign Out
+                </button>
+              ) : (
+                <>
+                  <Link to="/login" onClick={closeMenu} className="btn-outline min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
+                    Log In
+                  </Link>
+                  <Link to="/register" onClick={closeMenu} className="btn-primary min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
+                    Request Invite
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </nav>
@@ -98,6 +99,7 @@ export function Navbar() {
 }
 
 export function Footer() {
+  const { isStaff } = useAuth();
   return (
     <footer className="border-t border-t-border py-8">
       <div className="container flex max-w-255 flex-wrap items-center justify-center gap-x-8 gap-y-3 text-center max-md:flex-col max-md:gap-4 md:justify-between md:text-left">
@@ -117,9 +119,14 @@ export function Footer() {
           <Link to="/support" className="nav-link">
             Support
           </Link>
-          <Link to="/panjikar" className="nav-link">
-            Panjikar sign-in
+          <Link to="/status-check" className="nav-link">
+            Check Status
           </Link>
+          {isStaff && (
+            <Link key="panjikar" to="/panjikar" className="nav-link">
+              Panjikar sign-in
+            </Link>
+          )}
         </nav>
       </div>
     </footer>

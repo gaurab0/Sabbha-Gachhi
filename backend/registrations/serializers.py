@@ -1,6 +1,23 @@
+import re
+import uuid
+
 from rest_framework import serializers
 
 from .models import ConcernReport, LineageEntry, MatchProposal, Registration
+
+
+TOKEN_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+
+
+class StatusCheckSerializer(serializers.Serializer):
+    """Validates the token payload for the status-check endpoint."""
+    token = serializers.CharField(max_length=36, min_length=36)
+
+    def validate_token(self, value):
+        value = value.strip()
+        if not TOKEN_RE.match(value):
+            raise serializers.ValidationError("Invalid token format.")
+        return value
 
 
 class LineageEntrySerializer(serializers.Serializer):
@@ -60,8 +77,10 @@ class RegistrationCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         paternal_data = validated_data.pop("paternal_line", [])
         maternal_data = validated_data.pop("maternal_line", [])
+        owner = validated_data.pop("owner")
 
         registration = Registration.objects.create(
+            owner=owner,
             paternal_line=[LineageEntry(**entry) for entry in paternal_data],
             maternal_line=[LineageEntry(**entry) for entry in maternal_data],
             **validated_data,
@@ -83,7 +102,12 @@ class MatchProposalSerializer(serializers.ModelSerializer):
     MatchProposal interface from MatchProposalScreen.tsx.
     Contact fields are only ever populated by the view once state == "both_accepted".
     """
+    id = serializers.CharField(read_only=True)
     state = serializers.CharField(read_only=True)
+    shared_details = serializers.ListField(
+        child=serializers.CharField(read_only=True),
+        read_only=True,
+    )
 
     class Meta:
         model = MatchProposal
@@ -128,6 +152,8 @@ class RegistrationStatusSerializer(serializers.ModelSerializer):
             "guardian_name",
             "verification_status",
             "match",
+            "withdrawn",
+            "withdrawn_at",
         ]
 
     def get_match(self, obj):

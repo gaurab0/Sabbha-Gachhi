@@ -13,8 +13,6 @@ def _flag_verification_transition(sender, instance, **kwargs):
     after the save actually completes.
     """
     if not instance.pk:
-        # Brand new registration being created for the first time —
-        # nothing to compare against yet.
         instance._just_became_verified = False
         return
 
@@ -34,11 +32,13 @@ def _flag_verification_transition(sender, instance, **kwargs):
 def _run_matching_after_verification(sender, instance, created, **kwargs):
     """
     Runs right after save. If this save just verified the registration,
-    kick off the automated matching pipeline for it.
+    dispatch a Celery task to kick off the automated matching pipeline.
+    Decoupled from the admin view — any code path that verifies a profile
+    triggers the engine.
     """
     if created:
-        return  # a brand new registration can't already be "verified" on arrival
+        return
 
     if getattr(instance, "_just_became_verified", False):
-        from .matching import create_automated_proposal
-        create_automated_proposal(instance)
+        from .tasks import run_matching_engine_task
+        run_matching_engine_task.delay(instance.pk)

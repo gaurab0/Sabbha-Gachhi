@@ -33,6 +33,15 @@ export interface RegistrationCreatedResponse {
   created_at: string;
 }
 
+export interface RegistrationStatusResponse {
+  reference: string;
+  candidate_name: string;
+  guardian_name: string;
+  verification_status: "pending" | "verified";
+  match: MatchProposalResponse | null;
+  withdrawn: boolean;
+}
+
 export interface MatchProposalResponse {
   id: number;
   shared_by_panjikar: string;
@@ -46,19 +55,11 @@ export interface MatchProposalResponse {
   contact_email: string;
 }
 
-export interface RegistrationStatusResponse {
-  reference: string;
-  candidate_name: string;
-  guardian_name: string;
-  verification_status: "pending" | "verified";
-  match: MatchProposalResponse | null;
-}
-
 export interface ConcernReportPayload {
-  registration_reference_text: string;
+  registration_reference_text?: string;
   topic: string;
   description: string;
-  contact_back: string;
+  contactBack: string;
 }
 
 // -------------------------------------------------------------- Calls --
@@ -70,14 +71,12 @@ export function submitRegistration(payload: RegistrationPayload) {
   });
 }
 
-export function fetchRegistrationStatus(reference: string) {
-  return apiRequest<RegistrationStatusResponse>(
-    `/registrations/${reference}/status/`
-  );
+export function fetchMyRegistrationStatus() {
+  return apiRequest<RegistrationStatusResponse>("/registrations/me/status/");
 }
 
-export function withdrawRegistration(reference: string) {
-  return apiRequest<void>(`/registrations/${reference}/withdraw/`, {
+export function withdrawMyRegistration() {
+  return apiRequest<void>("/registrations/me/withdraw/", {
     method: "POST",
   });
 }
@@ -99,9 +98,24 @@ export function respondToMatchProposal(
   );
 }
 
+export interface StatusCheckResponse {
+  verified: boolean;
+  match_found: boolean;
+  match_count: number;
+  stage: "pending_verification" | "verified_awaiting_match" | "matched";
+}
+
 export function submitConcernReport(payload: ConcernReportPayload) {
+  const { registration_reference_text: _registration_reference_text, ...rest } = payload;
   return apiRequest<{ received: boolean }>("/concern-reports/", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(rest),
+  });
+}
+
+export function checkStatusByToken(token: string) {
+  return apiRequest<StatusCheckResponse>("/status/check/", {
+    method: "POST",
+    body: JSON.stringify({ token }),
   });
 }

@@ -140,6 +140,7 @@ interface CopyStrings {
     title: string;
     help: string;
     gotraLabel: string;
+    gotraPlaceholder: string;
     moolGramLabel: string;
     paternalTitle: string;
     maternalTitle: string;
@@ -249,6 +250,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       title: "Family lineage, for the panji",
       help: "This is used only to check for sapinda relation — never shown to a prospective match. Fill in what you know; the panjikar can help complete the rest.",
       gotraLabel: "Gotra / Mool",
+      gotraPlaceholder: "Select gotra",
       moolGramLabel: "Ancestral village (Mool gram)",
       paternalTitle: "Paternal line",
       maternalTitle: "Maternal line",
@@ -361,6 +363,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       title: "पंजी के लिए पारिवारिक वंशावली",
       help: "इसका उपयोग केवल सपिंड संबंध जांचने के लिए किया जाता है — यह कभी भी संभावित रिश्ते को नहीं दिखाया जाता। जो जानते हैं वह भरें; बाकी में पंजीकार मदद कर सकते हैं।",
       gotraLabel: "गोत्र / मूल",
+      gotraPlaceholder: "गोत्र चुनें",
       moolGramLabel: "पैतृक गाँव (मूल ग्राम)",
       paternalTitle: "पितृ पक्ष",
       maternalTitle: "मातृ पक्ष",
@@ -473,6 +476,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       title: "पंजीक लेल पारिवारिक वंशावली",
       help: "एकर उपयोग सिर्फ सपिंड संबंध जाँचबाक लेल होइत अछि — ई कहियो संभावित रिश्तादारकेँ नहि देखाओल जाइत अछि। जे जानैत छी से भरू; बाकीमे पंजीकार मदद क' सकैत छथि।",
       gotraLabel: "गोत्र / मूल",
+      gotraPlaceholder: "गोत्र चुनू",
       moolGramLabel: "पैतृक गाम (मूल ग्राम)",
       paternalTitle: "पितृ पक्ष",
       maternalTitle: "मातृ पक्ष",
@@ -574,6 +578,35 @@ interface Lineage {
   paternal: LineageEntry[];
   maternal: LineageEntry[];
 }
+
+const GOTRAS = [
+  "Kashyapa",
+  "Atri",
+  "Bharadwaja",
+  "Vishvamitra",
+  "Gautama",
+  "Jamadagni",
+  "Vashishtha",
+  "Agastya",
+  "Angirasa",
+  "Bhrigu",
+  "Kaushika",
+  "Kutsa",
+  "Shandilya",
+  "Vatsa",
+  "Harita",
+  "Koundinya / Kaundinya",
+  "Mudgala",
+  "Maitraya / Maitreya",
+  "Parashara",
+  "Garga",
+  "Kapila",
+  "Kanva",
+  "Katyayana",
+  "Shaunaka",
+  "Vatsya",
+  "Dhananjaya",
+];
 
 const initialLineage: Lineage = {
   gotra: "",
@@ -690,6 +723,10 @@ export default function RegistrationFlow(): React.ReactElement {
     });
   };
 
+  const setGotra = (gotra: string) => setLineage((prev) => ({ ...prev, gotra }));
+
+  const setMoolGram = (moolGram: string) => setLineage((prev) => ({ ...prev, moolGram }));
+
   const canSubmitConsent =
     consent.choice === "agree" && consent.ownWords.trim().length > 0;
 
@@ -746,6 +783,8 @@ export default function RegistrationFlow(): React.ReactElement {
             t={t}
             updateAncestor={updateAncestor}
             addAncestor={addAncestor}
+            onGotraChange={setGotra}
+            onMoolGramChange={setMoolGram}
             onNext={goNext}
             onBack={goBack}
           />
@@ -1105,11 +1144,13 @@ interface LineageStepProps {
   t: CopyStrings;
   updateAncestor: (side: LineageSide, idx: number, value: string) => void;
   addAncestor: (side: LineageSide) => void;
+  onGotraChange: (value: string) => void;
+  onMoolGramChange: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-function LineageStep({ lineage, t, updateAncestor, addAncestor, onNext, onBack }: LineageStepProps) {
+function LineageStep({ lineage, t, updateAncestor, addAncestor, onGotraChange, onMoolGramChange, onNext, onBack }: LineageStepProps) {
   return (
     <section>
       <p className="text-caption text-text/60 tracking-wider mb-3">{t.lineage.kicker}</p>
@@ -1118,12 +1159,27 @@ function LineageStep({ lineage, t, updateAncestor, addAncestor, onNext, onBack }
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="field">
-          <label className="label">{t.lineage.gotraLabel}</label>
-          <input className="input" value={lineage.gotra} onChange={() => {}} />
+          <label className="label" htmlFor="lineageGotra">{t.lineage.gotraLabel}</label>
+          <select
+            id="lineageGotra"
+            className="select"
+            value={lineage.gotra}
+            onChange={(e) => onGotraChange(e.target.value)}
+          >
+            <option value="">{t.lineage.gotraPlaceholder}</option>
+            {GOTRAS.map((gotra) => (
+              <option key={gotra} value={gotra}>{gotra}</option>
+            ))}
+          </select>
         </div>
         <div className="field">
-          <label className="label">{t.lineage.moolGramLabel}</label>
-          <input className="input" value={lineage.moolGram} onChange={() => {}} />
+          <label className="label" htmlFor="lineageMoolGram">{t.lineage.moolGramLabel}</label>
+          <input
+            id="lineageMoolGram"
+            className="input"
+            value={lineage.moolGram}
+            onChange={(e) => onMoolGramChange(e.target.value)}
+          />
         </div>
       </div>
 

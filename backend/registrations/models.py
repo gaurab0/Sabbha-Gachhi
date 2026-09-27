@@ -1,3 +1,6 @@
+import uuid
+
+from django.conf import settings
 from django.db import models
 
 # Create your models here.
@@ -32,6 +35,12 @@ class LineageEntry(EmbeddedModel):
 
 class Registration(models.Model):
 
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="registrations",
+    )
+
     class Gender(models.TextChoices):
         BRIDE = "Bride", "Bride"
         GROOM = "Groom", "Groom"
@@ -51,6 +60,7 @@ class Registration(models.Model):
 
     # ---- Meta / lifecycle -------------------------------------------------
     reference = models.CharField(max_length=20, unique=True, editable=False)
+    token = models.CharField(max_length=36, unique=True, editable=False, db_index=True)
     language = models.CharField(
         max_length=5, choices=Language.choices, default=Language.ENGLISH
     )
@@ -105,6 +115,8 @@ class Registration(models.Model):
         if not self.reference:
             import random
             self.reference = f"SG-{random.randint(100000, 999999)}"
+        if not self.token:
+            self.token = str(uuid.uuid4())
         super().save(*args, **kwargs)
 
 
@@ -220,6 +232,47 @@ class MatchAttemptLog(models.Model):
 
     def __str__(self):
         return f"Match attempt for {self.registration.reference} — {self.outcome} ({self.ran_at:%Y-%m-%d %H:%M})"
+
+
+# ---------------------------------------------------------------------------
+# Match — persistent scored match result from the automated engine.
+# ---------------------------------------------------------------------------
+
+class Match(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        NOTIFIED = "notified", "Notified"
+        VIEWED = "viewed", "Viewed"
+
+    registration = models.ForeignKey(
+        Registration,
+        on_delete=models.CASCADE,
+        related_name="matches",
+    )
+    candidate = models.ForeignKey(
+        Registration,
+        on_delete=models.CASCADE,
+        related_name="matches_as_candidate",
+    )
+    score = models.FloatField(default=0.0)
+    matched_on = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["matched_on"]),
+        ]
+        verbose_name = "Match"
+        verbose_name_plural = "Matches"
+
+    def __str__(self):
+        return f"Match {self.registration.reference} ↔ {self.candidate.reference} (score={self.score})"
 
 
 # ---------------------------------------------------------------------------
