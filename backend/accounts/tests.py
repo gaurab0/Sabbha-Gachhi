@@ -16,7 +16,7 @@ from unittest import mock
 
 import jwt
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -602,3 +602,73 @@ class EmailVerificationTests(TestCase):
             self.assertEqual(res.status_code, 400, alias)
         user = User.objects.get(email="a.b@gmail.com")
         self.assertEqual(user.normalized_email, "ab@gmail.com")
+
+
+class ClientIpTests(TestCase):
+    def _request(self, remote, xff=None):
+        extra = {"REMOTE_ADDR": remote}
+        if xff is not None:
+            extra["HTTP_X_FORWARDED_FOR"] = xff
+        return RequestFactory().get("/", **extra)
+
+    def test_spoofed_forwarded_header_ignored_by_default(self):
+        from .views import _client_ip
+
+        # Default TRUSTED_PROXY_COUNT=0: a client-supplied XFF must never
+        # override the direct peer, or throttles and IP caps evade trivially.
+        req = self._request("5.6.7.8", xff="1.2.3.4")
+        self.assertEqual(_client_ip(req), "5.6.7.8")
+
+    def test_forwarded_header_honored_behind_trusted_proxy(self):
+        from django.conf import settings as dj_settings
+
+        from .views import _client_ip
+
+        # With one trusted proxy, DRF trusts the last XFF entry (the peer
+        # our proxy received from) and ignores spoofed entries to its left.
+        # NOTE: NUM_PROXIES is read per-request (unlike THROTTLE_RATES, which
+        # binds at import), so overriding the REST_FRAMEWORK dict works here.
+        rest = dict(dj_settings.REST_FRAMEWORK)
+        rest["NUM_PROXIES"] = 1
+        with override_settings(REST_FRAMEWORK=rest):
+            req = self._request("9.9.9.9", xff="spoofed, 9.9.8.8")
+            self.assertEqual(_client_ip(req), "9.9.8.8")
+
+    def test_client_ip_matches_drf_ident(self):
+        """_client_ip and DRF throttling must key on the same machine.
+
+        _client_ip delegates to SimpleRateThrottle.get_ident, so this is
+        structural — the matrix below pins the agreed behavior against
+        literal values in case a DRF upgrade changes the formula.
+        """
+        from django.conf import settings as dj_settings
+
+        from .views import _client_ip
+
+        cases = [
+            # (remote, xff, num_proxies, expected)
+            ("5.6.7.8", None, 0, "5.6.7.8"),
+            ("5.6.7.8", "1.2.3.4", 0, "5.6.7.8"),
+            ("9.9.9.9", "1.2.3.4", 1, "1.2.3.4"),
+            ("9.9.9.9", "spoofed, 9.9.8.8", 1, "9.9.8.8"),
+            ("9.9.9.9", "a, b, c", 2, "b"),
+        ]
+        for remote, xff, proxies, expected in cases:
+            rest = dict(dj_settings.REST_FRAMEWORK)
+            rest["NUM_PROXIES"] = proxies
+            with override_settings(REST_FRAMEWORK=rest):
+                self.assertEqual(
+                    _client_ip(self._request(remote, xff=xff)),
+                    expected,
+                    f"remote={remote} xff={xff} proxies={proxies}",
+                )
+
+    def test_num_proxies_mirrors_trusted_proxy_count(self):
+        """The single-knob contract: DRF's NUM_PROXIES must equal our
+        TRUSTED_PROXY_COUNT, or throttles and caps would key differently."""
+        from django.conf import settings as dj_settings
+
+        self.assertEqual(
+            dj_settings.REST_FRAMEWORK["NUM_PROXIES"],
+            dj_settings.TRUSTED_PROXY_COUNT,
+        )

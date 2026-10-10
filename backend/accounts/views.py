@@ -44,20 +44,15 @@ RESEND_COOLDOWN_SECONDS = 60
 
 
 def _client_ip(request) -> str | None:
-    # X-Forwarded-For is trivially spoofable by the client, so it is only
-    # trusted behind TRUSTED_PROXY_COUNT known proxies (default 0 = never;
-    # use the direct peer). With N trusted proxies, the client is the first
-    # untrusted entry to the left of the N proxy-appended ones.
-    count = int(getattr(settings, "TRUSTED_PROXY_COUNT", 0) or 0)
-    if count > 0:
-        entries = [
-            part.strip()
-            for part in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
-            if part.strip()
-        ]
-        if len(entries) > count:
-            return entries[-count - 1]
-    return request.META.get("REMOTE_ADDR")
+    # Single source of truth with DRF throttling: delegate identity to DRF's
+    # own algorithm so throttle buckets and our caps key on the same machine.
+    # get_ident is stateless (reads only api_settings.NUM_PROXIES, which
+    # mirrors TRUSTED_PROXY_COUNT, plus the request) — no instance state, so
+    # calling it unbound is safe. With the default 0, any X-Forwarded-For is
+    # treated as client-spoofable and the direct peer is used.
+    from rest_framework.throttling import SimpleRateThrottle
+
+    return SimpleRateThrottle.get_ident(None, request)
 
 
 def _dispatch_email(message, raw_secret: str | None = None) -> None:
