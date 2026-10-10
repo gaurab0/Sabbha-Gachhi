@@ -183,8 +183,8 @@ export function SignupPage() {
     setError("");
     setLoading(true);
     try {
-      await signup(email, password);
-      navigate("/", { replace: true });
+      const verified = await signup(email, password);
+      navigate(verified ? "/" : "/verify-email", { replace: true });
     } catch (err: any) {
       const body = err?.body as Record<string, string[]> | undefined;
       if (body?.email?.length) {

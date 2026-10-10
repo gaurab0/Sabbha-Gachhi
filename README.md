@@ -43,6 +43,26 @@ This pings the worker (`celery control ping`) and **fails loudly with exit
 code 1** if no worker responds or the broker is unreachable, so a dead worker
 is visible in dev/staging instead of silently swallowing match tasks.
 
+## Email deliverability (production)
+
+Verification mail is sent from `DEFAULT_FROM_EMAIL` — full `EMAIL_FROM`
+wins, otherwise `Sabha Gachhi <noreply@${NOREPLY_EMAIL_DOMAIN}>`. For the
+sending domain you need, at your DNS registrar:
+
+- **SPF** (TXT @): `v=spf1 include:<your-provider> ~all`
+- **DKIM** (TXT `<selector>._domainkey`): provider-supplied key record
+- **DMARC** (TXT `_dmarc`): `v=DMARC1; p=quarantine; rua=mailto:dmarc@<domain>`
+
+The `noreply@` mailbox should either not exist (bounce) or be a
+discard/blackhole address — nobody reads it. Note no email system can
+technically *block* replies; the `Reply-To`/`Auto-Submitted`/
+`X-Auto-Response-Suppress`/`Precedence: bulk` headers plus the unmonitored
+address are the standard way to discourage them.
+
+Use a transactional provider in production (SES, Postmark, SendGrid, Resend,
+or Brevo) — via `EMAIL_SMTP_*` or a custom `EMAIL_VERIFICATION_PROVIDER` —
+never a personal Gmail account. Console backend in dev.
+
 ## Quick start
 
 Backend (MongoDB + Redis must be running):

@@ -5,3 +5,5 @@ djangorestframework-simplejwt
 django-cors-headers
 celery[redis]
 redis
+phonenumbers  # libphonenumber port: server-side E.164 parse + is_valid()
+python-dotenv  # loads backend/.env into the environment (settings.py)

@@ -112,6 +112,7 @@ interface CopyStrings {
     brideLabel: string;
     groomLabel: string;
     dobLabel: string;
+    dobTooYoung: string;
     cityLabel: string;
     educationLabel: string;
     occupationLabel: string;
@@ -220,6 +221,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       brideLabel: "Bride",
       groomLabel: "Groom",
       dobLabel: "Date of birth",
+      dobTooYoung: "The candidate must be at least 18 years old.",
       cityLabel: "Current city",
       educationLabel: "Education",
       occupationLabel: "Occupation",
@@ -334,6 +336,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       brideLabel: "वधू",
       groomLabel: "वर",
       dobLabel: "जन्म तिथि",
+      dobTooYoung: "उम्मीदवार की आयु कम से कम 18 वर्ष होनी चाहिए।",
       cityLabel: "वर्तमान शहर",
       educationLabel: "शिक्षा",
       occupationLabel: "व्यवसाय",
@@ -447,6 +450,7 @@ const COPY: Record<LanguageCode, CopyStrings> = {
       brideLabel: "वधू",
       groomLabel: "वर",
       dobLabel: "जन्म तिथि",
+      dobTooYoung: "उम्मीदवारक आयु कम सँ कम 18 बर्ष होनि चाही।",
       cityLabel: "वर्तमान शहर",
       educationLabel: "शिक्षा",
       occupationLabel: "व्यवसाय",
@@ -624,6 +628,35 @@ const initialLineage: Lineage = {
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png"];
+
+/**
+ * A candidate must be at least this old to be registered. Enforced here so
+ * the form never advances, and again in RegistrationCreateSerializer.validate
+ * so the API can't be bypassed by posting directly.
+ */
+const MIN_CANDIDATE_AGE = 18;
+
+/** Whole years elapsed from an ISO `YYYY-MM-DD` date of birth. */
+function ageFromDob(dob: string): number | null {
+  if (!dob) return null;
+  const birth = new Date(`${dob}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hadBirthday =
+    today.getMonth() > birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hadBirthday) age -= 1;
+  return age;
+}
+
+/** Latest date a candidate may be born on and still be MIN_CANDIDATE_AGE or older. */
+function latestAllowedDob(): string {
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - MIN_CANDIDATE_AGE);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${cutoff.getFullYear()}-${pad(cutoff.getMonth() + 1)}-${pad(cutoff.getDate())}`;
+}
 
 function getAncestorLabel(t: CopyStrings, entry: LineageEntry): string {
   switch (entry.labelKey) {
@@ -944,7 +977,9 @@ function CandidateStep({ data, setData, t, onNext, onBack }: CandidateStepProps)
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setData({ ...data, [k]: e.target.value });
 
-  const valid = Boolean(data.fullName.trim() && data.gender && data.dob);
+  const age = ageFromDob(data.dob);
+  const tooYoung = data.dob !== "" && age !== null && age < MIN_CANDIDATE_AGE;
+  const valid = Boolean(data.fullName.trim() && data.gender && data.dob) && !tooYoung;
 
   const genderLabel = (g: Gender): string =>
     g === "Bride" ? t.candidate.brideLabel : g === "Groom" ? t.candidate.groomLabel : "";
@@ -979,7 +1014,20 @@ function CandidateStep({ data, setData, t, onNext, onBack }: CandidateStepProps)
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="field">
           <label className="label">{t.candidate.dobLabel}</label>
-          <input className="input" type="date" value={data.dob} onChange={set("dob")} />
+          <input
+            className="input"
+            type="date"
+            max={latestAllowedDob()}
+            value={data.dob}
+            onChange={set("dob")}
+            aria-invalid={tooYoung}
+            aria-describedby={tooYoung ? "dob-age-error" : undefined}
+          />
+          {tooYoung && (
+            <p id="dob-age-error" className="field-hint text-primary">
+              {t.candidate.dobTooYoung}
+            </p>
+          )}
         </div>
         <div className="field">
           <label className="label">{t.candidate.cityLabel}</label>

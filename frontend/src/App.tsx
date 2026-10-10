@@ -18,7 +18,9 @@ import { StatusRoute } from "./routes/StatusRoute";
 import TokenCheckPage from "./components/TokenCheckPage";
 import { LoginPage } from "./components/LoginPage";
 import { SignupPage } from "./components/SignupPage";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { FullyVerifiedRoute, VerifiedRoute } from "./components/ProtectedRoute";
+import { VerifyEmailPage } from "./components/VerifyEmailPage";
+import { PhoneVerifyPage } from "./components/PhoneVerifyPage";
 import { AdminRoute } from "./components/AdminRoute";
 
 function LandingPage() {
@@ -47,46 +49,48 @@ export default function App() {
         <Route
           path="/register/*"
           element={
-            <ProtectedRoute>
+            <VerifiedRoute>
               <RegistrationFlow />
-            </ProtectedRoute>
+            </VerifiedRoute>
           }
         />
         <Route
           path="/status"
           element={
-            <ProtectedRoute>
+            <VerifiedRoute>
               <StatusRoute />
-            </ProtectedRoute>
+            </VerifiedRoute>
           }
         />
         <Route
           path="/status/:reference"
           element={
-            <ProtectedRoute>
+            <VerifiedRoute>
               <StatusRoute />
-            </ProtectedRoute>
+            </VerifiedRoute>
           }
         />
         <Route
           path="/status/match/:matchId"
           element={
-            <ProtectedRoute>
+            <FullyVerifiedRoute>
               <ProposalRoute />
-            </ProtectedRoute>
+            </FullyVerifiedRoute>
           }
         />
         <Route
           path="/concern"
           element={
-            <ProtectedRoute>
+            <VerifiedRoute>
               <ConcernRoute />
-            </ProtectedRoute>
+            </VerifiedRoute>
           }
         />
       </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/verify-phone" element={<PhoneVerifyPage />} />
       <Route path="/panjikar/*" element={<AdminRoute><PanjikarPage /></AdminRoute>} />
     </Routes>
   );

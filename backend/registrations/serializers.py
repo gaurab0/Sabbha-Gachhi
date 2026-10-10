@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import date
 
 from rest_framework import serializers
 
@@ -7,6 +8,16 @@ from .models import ConcernReport, LineageEntry, MatchProposal, Registration
 
 
 TOKEN_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+
+# A candidate must be an adult to be registered. Mirrors MIN_CANDIDATE_AGE in
+# the frontend RegistrationFlow.tsx, which blocks the form before submission.
+MIN_CANDIDATE_AGE = 18
+
+
+def age_from_dob(dob: date) -> int:
+    """Whole years elapsed from `dob` to today."""
+    today = date.today()
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
 class StatusCheckSerializer(serializers.Serializer):
@@ -71,6 +82,14 @@ class RegistrationCreateSerializer(serializers.ModelSerializer):
         if not data.get("consent_own_words", "").strip():
             raise serializers.ValidationError(
                 "Consent must be given in the candidate's own words."
+            )
+
+        # A candidate must be an adult. Mirrors MIN_CANDIDATE_AGE in
+        # RegistrationFlow.tsx, which blocks the form before it gets here.
+        candidate_dob = data.get("candidate_dob")
+        if candidate_dob and age_from_dob(candidate_dob) < MIN_CANDIDATE_AGE:
+            raise serializers.ValidationError(
+                {"candidate_dob": f"The candidate must be at least {MIN_CANDIDATE_AGE} years old."}
             )
         return data
 

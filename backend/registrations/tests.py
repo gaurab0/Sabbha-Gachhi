@@ -228,7 +228,11 @@ class TestWithdrawnRegistrationStatus(TestCase):
     def test_withdrawn_status_returns_200(self):
         """After withdrawing, GET registrations/me/status/ returns 200 with withdrawn=true."""
         User = get_user_model()
-        user = User.objects.create_user(username='testuser', password='testpass')
+        user = User.objects.create_user(
+            email='testuser@example.com',
+            password='testpass',
+            email_verified=True,
+        )
         registration = Registration.objects.create(
             owner=user,
             reference='SG-999999',
@@ -251,7 +255,11 @@ class TestWithdrawnRegistrationStatus(TestCase):
     def test_active_status_returns_withdrawn_false(self):
         """Active (non-withdrawn) registration returns withdrawn=false."""
         User = get_user_model()
-        user = User.objects.create_user(username='testuser2', password='testpass')
+        user = User.objects.create_user(
+            email='testuser2@example.com',
+            password='testpass',
+            email_verified=True,
+        )
         Registration.objects.create(
             owner=user,
             reference='SG-888888',
@@ -267,14 +275,38 @@ class TestWithdrawnRegistrationStatus(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['withdrawn'])
 
+    def test_unverified_user_can_read_own_status(self):
+        """Unverified users get 200 so the UI can show the verify-email screen."""
+        User = get_user_model()
+        user = User.objects.create_user(
+            email='unverified-status@example.com',
+            password='testpass',
+            email_verified=False,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get('/api/registrations/me/status/')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['email_verified'])
+
 
 class TestAutomaticMatchingProposal(TestCase):
     """Two verified registrations should get MatchProposal rows via the task."""
 
     def test_verified_registrations_get_match_proposal(self):
         User = get_user_model()
-        user1 = User.objects.create_user(username='user1', password='pass')
-        user2 = User.objects.create_user(username='user2', password='pass')
+        user1 = User.objects.create_user(
+            email='user1@example.com',
+            password='pass',
+            email_verified=True,
+        )
+        user2 = User.objects.create_user(
+            email='user2@example.com',
+            password='pass',
+            email_verified=True,
+        )
 
         reg1 = Registration.objects.create(
             owner=user1,

@@ -183,8 +183,8 @@ export function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
-      navigate("/", { replace: true });
+      const verified = await login(email, password);
+      navigate(verified ? "/" : "/verify-email", { replace: true });
     } catch (err: any) {
       const body = err?.body as Record<string, string[]> | undefined;
       if (body?.email?.length) {

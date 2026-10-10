@@ -8,6 +8,12 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from accounts.permissions import (
+    RequireFullyVerified,
+    RequireVerifiedEmail,
+    email_not_verified_response,
+)
+
 from .models import ConcernReport, Match, MatchProposal, Registration
 from .serializers import (
     ConcernReportSerializer,
@@ -22,7 +28,7 @@ from .serializers import (
 class RegistrationCreateView(APIView):
     """POST /api/registrations/ — requires login and stores the owner."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequireVerifiedEmail]
 
     def post(self, request):
         serializer = RegistrationCreateSerializer(data=request.data)
@@ -40,12 +46,24 @@ class MyRegistrationStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        registration = get_object_or_404(Registration, owner=request.user)
-        return Response(RegistrationStatusSerializer(registration).data)
+        registration = Registration.objects.filter(owner=request.user).first()
+        if not request.user.email_verified:
+            payload = {
+                "email_verified": False,
+                "registration": None,
+            }
+            if registration is not None:
+                payload.update(RegistrationStatusSerializer(registration).data)
+            return Response(payload)
+        if registration is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        data = RegistrationStatusSerializer(registration).data
+        data["email_verified"] = True
+        return Response(data)
 
 
 class MyRegistrationWithdrawView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequireVerifiedEmail]
 
     """POST /api/registrations/me/withdraw/"""
 
@@ -63,7 +81,8 @@ class MyRegistrationWithdrawView(APIView):
 class MatchProposalDetailView(APIView):
     """GET /api/match-proposals/<id>/ — powers MatchProposalScreen.tsx on load."""
 
-    permission_classes = [IsAuthenticated]
+    # Full gate: this is where contact details (incl. phone) get revealed.
+    permission_classes = [IsAuthenticated, RequireFullyVerified]
 
     def get(self, request, pk):
         proposal = get_object_or_404(MatchProposal, pk=pk)
@@ -78,7 +97,8 @@ class MatchProposalRespondView(APIView):
     Body: {"action": "accept"} or {"action": "decline"}
     """
 
-    permission_classes = [IsAuthenticated]
+    # Full gate: accepting can reveal contact details on both_accepted.
+    permission_classes = [IsAuthenticated, RequireFullyVerified]
 
     def post(self, request, pk):
         proposal = get_object_or_404(MatchProposal, pk=pk)
@@ -128,7 +148,7 @@ def _reveal_contact(proposal: MatchProposal, source: Registration):
 class ConcernReportCreateView(APIView):
     """POST /api/concern-reports/ — attaches the authenticated user's registration."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequireVerifiedEmail]
 
     def post(self, request):
         serializer = ConcernReportSerializer(data=request.data)

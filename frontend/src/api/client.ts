@@ -88,6 +88,20 @@ export async function apiRequest<T>(
     } catch {
       // no JSON body, that's fine
     }
+    // Unverified users hold valid JWTs but may not use protected routes.
+    // Send them to the verify screen instead of failing silently.
+    const code = (body as { code?: string } | null)?.code;
+    if (response.status === 403 && (code === "email_not_verified" || code === "EMAIL_NOT_VERIFIED")) {
+      if (!window.location.pathname.startsWith("/verify-email")) {
+        window.location.href = "/verify-email";
+      }
+    }
+    // Email check runs first server-side, so either code maps to its own page.
+    if (response.status === 403 && (code === "phone_not_verified" || code === "PHONE_NOT_VERIFIED")) {
+      if (!window.location.pathname.startsWith("/verify-phone")) {
+        window.location.href = "/verify-phone";
+      }
+    }
     throw new ApiError(response.status, body);
   }
 

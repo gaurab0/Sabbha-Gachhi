@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Verification tokens travel in /verify-email?token=... and are POSTed,
+         never followed as GETs; no-referrer keeps them out of Referer headers. -->
+    <meta name="referrer" content="no-referrer" />
     <meta name="description" content="Sabha Gachhi — a private, non-profit matrimonial platform continuing the Saurath Sabha Gachhi panji tradition." />
     <title>Sabha Gachhi — Saurath Sabha Gachhi Panji Tradition</title>
   </head>

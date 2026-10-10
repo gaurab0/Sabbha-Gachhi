@@ -44,6 +44,8 @@ export function VerifyEmailPage() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [meLoaded, setMeLoaded] = useState(false);
+  const [meError, setMeError] = useState(false);
+  const [meRetry, setMeRetry] = useState(0);
   const [cooldown, setCooldown] = useState(0);
   const [sending, setSending] = useState(false);
   // Single-flight guard: rapid clicks must not fire parallel requests.
@@ -59,6 +61,7 @@ export function VerifyEmailPage() {
   const token = params.get("token");
 
   useEffect(() => {
+    setMeError(false);
     fetchMe()
       .then((me) => {
         setEmail(me.email);
@@ -75,8 +78,15 @@ export function VerifyEmailPage() {
           navigate(me.phone_verified ? "/" : "/verify-phone", { replace: true });
         }
       })
-      .catch(() => navigate("/login", { replace: true }));
-  }, [navigate, token]);
+      // 401 (logged out / expired session) still routes to login; any
+      // other failure (network, 5xx) shows an inline error with Retry so
+      // the page never strands the user on a spinner or a wrong screen.
+      .catch((err: any) =>
+        err?.status === 401
+          ? navigate("/login", { replace: true })
+          : setMeError(true)
+      );
+  }, [navigate, token, meRetry]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -214,6 +224,32 @@ export function VerifyEmailPage() {
   if (emailVerified) {
     navigate("/verify-phone", { replace: true });
     return null;
+  }
+
+  // Load failure (network/5xx — not a 401, which routes to login above
+  // via the effect): show an error with Retry instead of stranding the
+  // user. Retry re-runs the /me/ fetch through the meRetry counter.
+  if (meError) {
+    return (
+      <div className="ve-wrap">
+        <style>{STYLES}</style>
+        <main className="ve-card">
+          <p className="ve-kicker">Verify your email</p>
+          <h1 className="ve-title">Couldn't load your account</h1>
+          <p className="ve-error">
+            We couldn't reach the server. Check your connection and try again —
+            nothing has been sent or lost.
+          </p>
+          <button
+            type="button"
+            className="ve-btn"
+            onClick={() => setMeRetry((c) => c + 1)}
+          >
+            Retry
+          </button>
+        </main>
+      </div>
+    );
   }
 
   // Neutral state until /me/ answers: never assume a mode (and its copy)
