@@ -130,12 +130,17 @@ class EmailVerificationTests(TestCase):
         self.assertEqual(me.status_code, 200)
         self.assertFalse(me.data["email_verified"])
 
+        # Unverified users CAN read their own status (deliberate: the
+        # frontend needs the payload to render the "verify your email"
+        # screen). The gate is a 200 with email_verified=False, not a 403 —
+        # RequireVerifiedEmail still guards create/withdraw.
         gated = self.client.get(
             "/api/registrations/me/status/",
             HTTP_AUTHORIZATION=f"Bearer {body['access']}",
         )
-        self.assertEqual(gated.status_code, 403)
-        self.assertEqual(gated.data["code"], "email_not_verified")
+        self.assertEqual(gated.status_code, 200)
+        self.assertFalse(gated.data["email_verified"])
+        self.assertIsNone(gated.data["registration"])
 
         # Verify out-of-band (console backend in tests) with auth header.
         user = User.objects.get(email="case.one@gmail.com")
@@ -338,6 +343,33 @@ class EmailVerificationTests(TestCase):
         self.assertEqual(res.status_code, 200, res.content[:300])
         self.assertEqual(res.data, {"detail": "Email verified"})
 
+    def test_otp_generation_zero_pads(self):
+        # Deterministic proof that issue_code zero-pads: force randbelow to
+        # a 5-digit number and assert the issued (and verifiable) code keeps
+        # its leading zero end to end. No luck involved.
+        client, user = self._authed("otp.pad@gmail.com")
+        VerificationSendLog.objects.filter(user=user).delete()
+        fake, old_sender = _RecordingSender(), SENDERS["email"]
+        SENDERS["email"] = fake
+        try:
+            with mock.patch(
+                "accounts.verification.secrets.randbelow", return_value=12345
+            ):
+                with override_settings(EMAIL_VERIFICATION_METHOD="otp"):
+                    res = client.post(
+                        "/api/auth/resend-verification/",
+                        {"channel": "email"},
+                        format="json",
+                    )
+            self.assertEqual(res.status_code, 200, res.content[:300])
+        finally:
+            SENDERS["email"] = old_sender
+        self.assertEqual(fake.sent[-1][1], "012345")
+        ok = client.post(
+            "/api/auth/verify-email/", {"code": "012345"}, format="json"
+        )
+        self.assertEqual(ok.status_code, 200, ok.content[:300])
+
     def test_otp_malformed_code_rejected(self):
         client, _ = self._authed("otp.bad@gmail.com")
         for bad in ("12345", "1234567", "abcdef", "12 34 56"):
@@ -444,7 +476,10 @@ class EmailVerificationTests(TestCase):
                 created_at=tz.now() - timedelta(hours=2),
             )
         with override_settings(
-            EMAIL_VERIFICATION_METHOD="otp", OTP_MAX_SENDS_PER_HOUR_PER_TARGET=100
+            EMAIL_VERIFICATION_METHOD="otp",
+            OTP_MAX_SENDS_PER_HOUR_PER_TARGET=100,
+            # Pin a low IP cap so the test needs 10 seeded rows, not 100.
+            RESEND_MAX_PER_IP_PER_DAY=10,
         ):
             res = client.post(
                 "/api/auth/resend-verification/", {"channel": "email"}, format="json"

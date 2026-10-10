@@ -34,9 +34,14 @@ def _msg():
 
 
 class SmtpOptionsTests(SimpleTestCase):
-    def _options(self, **env):
+    def _options(self, debug=False, **env):
+        # debug=False exercises the production path: missing credentials
+        # raise instead of silently falling back to console. (Passing
+        # debug=True would take the dev early-return.) Explicit parameter
+        # rather than override_settings, because _smtp_options reads the
+        # module-global DEBUG, which Django's override cannot reach.
         with mock.patch.dict(os.environ, _env(**env), clear=True):
-            return _smtp_options()
+            return _smtp_options(debug=debug)
 
     def test_valid_starttls_pair(self):
         opts = self._options(

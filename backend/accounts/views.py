@@ -44,9 +44,19 @@ RESEND_COOLDOWN_SECONDS = 60
 
 
 def _client_ip(request) -> str | None:
-    xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    if xff:
-        return xff.split(",")[0].strip()
+    # X-Forwarded-For is trivially spoofable by the client, so it is only
+    # trusted behind TRUSTED_PROXY_COUNT known proxies (default 0 = never;
+    # use the direct peer). With N trusted proxies, the client is the first
+    # untrusted entry to the left of the N proxy-appended ones.
+    count = int(getattr(settings, "TRUSTED_PROXY_COUNT", 0) or 0)
+    if count > 0:
+        entries = [
+            part.strip()
+            for part in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
+            if part.strip()
+        ]
+        if len(entries) > count:
+            return entries[-count - 1]
     return request.META.get("REMOTE_ADDR")
 
 
@@ -201,6 +211,10 @@ class MeView(APIView):
                 "phone_verified_at": getattr(user, "phone_verified_at", None),
                 "phone_masked": mask_phone(user.phone) if user.phone else None,
                 "phone_country": getattr(user, "phone_country", None),
+                # Tells the frontend which verification UI to show by
+                # default (otp boxes vs link wording). Read-only signal;
+                # the server still accepts both payload shapes.
+                "verification_method": verification_method(),
             }
         )
 
@@ -425,16 +439,20 @@ def _email_target_hourly_remaining(user, target: str) -> int:
 def _email_daily_remaining(user, ip: str | None) -> int:
     """Seconds until the daily budgets refill; 0 = budget left.
 
-    5/day per user, 10/day per IP. Counts confirmed sends only; failed SMTP
-    sends return 503 and do not consume the user's daily budget.
+    Per-user cap is strict (identity-bound, no collateral); per-IP cap is
+    deliberately loose (default 100/day — a whole campus can share one NAT
+    address) so it only catches distributed abuse. Counts confirmed sends
+    only; failed SMTP sends return 503 and do not consume budget.
     """
+    user_cap = int(getattr(settings, "RESEND_MAX_PER_USER_PER_DAY", 5))
+    ip_cap = int(getattr(settings, "RESEND_MAX_PER_IP_PER_DAY", 100))
     day_ago = timezone.now() - timedelta(days=1)
     user_stamps = list(
         VerificationSendLog.objects.filter(
             user=user, kind="email", created_at__gte=day_ago
         ).values_list("created_at", flat=True)
     )
-    if len(user_stamps) >= 5:
+    if len(user_stamps) >= user_cap:
         retry_at = min(user_stamps) + timedelta(days=1)
         return max(0, int((retry_at - timezone.now()).total_seconds()))
     if ip:
@@ -443,7 +461,7 @@ def _email_daily_remaining(user, ip: str | None) -> int:
                 ip_address=ip, kind="email", created_at__gte=day_ago
             ).values_list("created_at", flat=True)
         )
-        if len(ip_stamps) >= 10:
+        if len(ip_stamps) >= ip_cap:
             retry_at = min(ip_stamps) + timedelta(days=1)
             return max(0, int((retry_at - timezone.now()).total_seconds()))
     return 0
