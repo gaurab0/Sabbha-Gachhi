@@ -169,6 +169,49 @@ class EmailVerificationTests(TestCase):
         self.assertEqual(login.status_code, 200)
         self.assertTrue(login.data["email_verified"])
 
+    # -- gating: unverified is blocked from app writes, status stays open -
+    def test_unverified_blocked_create_403(self):
+        body = self._signup(email="gate.create@gmail.com")
+        res = _post(
+            self.client, "/api/registrations/", {}, token=body["access"]
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.data["code"], "email_not_verified")
+
+    def test_unverified_blocked_withdraw_403(self):
+        body = self._signup(email="gate.withdraw@gmail.com")
+        # Permission runs before the handler, so the missing registration
+        # surfaces as 403 here, not the handler's 404.
+        res = _post(
+            self.client,
+            "/api/registrations/me/withdraw/",
+            {},
+            token=body["access"],
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.data["code"], "email_not_verified")
+
+    def test_unverified_blocked_concern_403(self):
+        body = self._signup(email="gate.concern@gmail.com")
+        res = _post(
+            self.client, "/api/concern-reports/", {}, token=body["access"]
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.data["code"], "email_not_verified")
+
+    def test_otp_verify_grants_access(self):
+        client, user = self._authed("gate.otp@gmail.com")
+        _make_code(user, normalize_email(user.email), code="482916")
+        ok = client.post(
+            "/api/auth/verify-email/", {"code": "482916"}, format="json"
+        )
+        self.assertEqual(ok.status_code, 200, ok.content[:300])
+        # Gate now passes: empty body fails serializer validation (400),
+        # which proves we got past the permission check (would be 403).
+        res = client.post("/api/registrations/", {}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertNotEqual(res.data.get("code"), "email_not_verified")
+
     # -- token misuse (link flow) ----------------------------------------
     def test_expired_reused_tampered_tokens(self):
         body = self._signup(email="reuse.case@gmail.com")
@@ -589,6 +632,51 @@ class EmailVerificationTests(TestCase):
             "/api/auth/verify-email/", {"code": "482916"}, format="json"
         )
         self.assertEqual(stale.status_code, 400)
+
+    def test_change_email_otp_end_to_end(self):
+        # Full journey in OTP mode: verify old address, request a change,
+        # verify the NEW address with the NEW code, end verified-as-new.
+        client, user = self._authed("otp.move@gmail.com")
+        _make_code(user, normalize_email(user.email), code="111111")
+        first = client.post(
+            "/api/auth/verify-email/", {"code": "111111"}, format="json"
+        )
+        self.assertEqual(first.status_code, 200, first.content[:300])
+        user.refresh_from_db()
+        self.assertTrue(user.email_verified)
+
+        fake, old_sender = _RecordingSender(), SENDERS["email"]
+        SENDERS["email"] = fake
+        try:
+            with override_settings(EMAIL_VERIFICATION_METHOD="otp"):
+                chg = client.post(
+                    "/api/auth/email/change/",
+                    {
+                        "new_email": "otp.moved@gmail.com",
+                        "current_password": "StrongPass123!",
+                    },
+                    format="json",
+                )
+            self.assertEqual(chg.status_code, 200, chg.content[:300])
+        finally:
+            SENDERS["email"] = old_sender
+        user.refresh_from_db()
+        # While the change is pending the account is unverified...
+        self.assertFalse(user.email_verified)
+        self.assertEqual(user.pending_email, "otp.moved@gmail.com")
+        # ...and the code went to the NEW address (normalized: Gmail
+        # dots are folded, so otp.moved@ becomes otpmoved@), not the old one.
+        self.assertEqual(fake.sent[-1][0], "otpmoved@gmail.com")
+        done = client.post(
+            "/api/auth/verify-email/",
+            {"code": fake.sent[-1][1]},
+            format="json",
+        )
+        self.assertEqual(done.status_code, 200, done.content[:300])
+        user.refresh_from_db()
+        self.assertTrue(user.email_verified)
+        self.assertEqual(user.email, "otp.moved@gmail.com")
+        self.assertIsNone(user.pending_email)
 
     # -- Gmail aliases ---------------------------------------------------
     def test_gmail_alias_duplicates_rejected(self):
