@@ -33,15 +33,28 @@ load_dotenv(BASE_DIR / ".env", override=False)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c22bkv+xinu1!th@-m1=90e5qqzt%m+%32!=(-in2g$_d2%@g3'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default False so a missing env var fails safe; local dev sets
 # DJANGO_DEBUG=true in backend/.env (runserver needs it for localhost too,
-# since ALLOWED_HOSTS is empty).
+# since ALLOWED_HOSTS is empty). Defined before SECRET_KEY, which branches
+# on it below.
 DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in (
     '1', 'true', 'yes', 'on')
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if DEBUG:
+        # Local dev only: predictable, committed, never secret.
+        SECRET_KEY = 'django-insecure-c22bkv+xinu1!th@-m1=90e5qqzt%m+%32!=(-in2g$_d2%@g3'
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY is missing. Set a long random value in "
+            "backend/.env (never commit it). Rotating it invalidates all "
+            "outstanding JWTs and OTP hashes, forcing re-login and resend."
+        )
 
 ALLOWED_HOSTS = []
 
@@ -100,8 +113,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 AUTH_USER_MODEL = "accounts.User"
 
+# How many trusted proxies sit in front of Django. 0 (default) means every
+# X-Forwarded-For header is treated as client-spoofable. Shared with DRF's
+# throttling (NUM_PROXIES) and our own _client_ip so both identify the same
+# machine; a mismatch would let spoofed headers evade one layer but not
+# the other.
+TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '0'))
+
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'accounts.exceptions.api_exception_handler',
+    'NUM_PROXIES': TRUSTED_PROXY_COUNT,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
