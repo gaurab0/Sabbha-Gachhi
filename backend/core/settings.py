@@ -17,6 +17,18 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load backend/.env into the environment (explicit OS env vars still win).
+# Required package: python-dotenv (see requirements.txt).
+try:
+    from dotenv import load_dotenv
+except ImportError as exc:
+    raise ImportError(
+        "python-dotenv is required (pip install -r requirements.txt) "
+        "so backend/.env is loaded."
+    ) from exc
+
+load_dotenv(BASE_DIR / ".env", override=False)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -25,7 +37,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-c22bkv+xinu1!th@-m1=90e5qqzt%m+%32!=(-in2g$_d2%@g3'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Default False so a missing env var fails safe; local dev sets
+# DJANGO_DEBUG=true in backend/.env (runserver needs it for localhost too,
+# since ALLOWED_HOSTS is empty).
+DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in (
+    '1', 'true', 'yes', 'on')
 
 ALLOWED_HOSTS = []
 
@@ -42,7 +58,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'registrations',
 ]
 
@@ -85,6 +101,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'accounts.exceptions.api_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -92,15 +109,22 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon': os.environ.get('DRF_ANON_THROTTLE', '100/hour'),
         'status_check': '5/hour',
+        # Auth endpoints: per-IP (anon) / per-user (authed) via ScopedRateThrottle.
+        'auth': os.environ.get('DRF_AUTH_THROTTLE', '20/hour'),
+        'verify': os.environ.get('DRF_VERIFY_THROTTLE', '20/hour'),
+        'resend': os.environ.get('DRF_RESEND_THROTTLE', '10/hour'),
+        'phone': os.environ.get('DRF_PHONE_THROTTLE', '30/hour'),
     },
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
@@ -157,11 +181,309 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# Django 6.1 sends through MAILERS when present. We also expose the sanitized
+# legacy EMAIL_* values below so diagnostics and older shell snippets still show
+# the effective configuration.
+def _env_string(*names: str, default: str = "") -> str:
+    for name in names:
+        if name in os.environ:
+            value = (os.environ.get(name) or "").strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                value = value[1:-1].strip()
+            return value
+    return default
+
+
+def _env_bool(name: str, default: bool | None = None) -> bool | None:
+    if name not in os.environ:
+        return default
+    value = (os.environ.get(name) or "").strip().lower()
+    if value in ("1", "true", "yes", "on"):
+        return True
+    if value in ("0", "false", "no", "off", "", "starttls"):
+        return False
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        f"{name}={value!r} is not understood. Use true/false."
+    )
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = _env_string(name, default=str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured(f"{name}={raw!r} is not a valid integer.") from None
+
+
+def _smtp_options(debug: bool | None = None) -> dict:
+    """Build the MAILERS OPTIONS dict from env, or {} for console fallback.
+
+    `debug` defaults to the module-global DEBUG (correct at import time,
+    when this runs to build MAILERS). Pass debug=False explicitly to test
+    the production path — override_settings(DEBUG=False) cannot work here
+    because this function reads the module global, not the settings wrapper.
+    """
+    from django.core.exceptions import ImproperlyConfigured
+
+    if debug is None:
+        debug = DEBUG
+
+    host = _env_string('EMAIL_HOST', 'EMAIL_SMTP_HOST')
+    user = _env_string('EMAIL_HOST_USER', 'EMAIL_USER', 'EMAIL_SMTP_USER')
+    password = _clean_password(
+        os.environ.get('EMAIL_HOST_PASSWORD')
+        or os.environ.get('EMAIL_PASS')
+        or os.environ.get('EMAIL_SMTP_PASSWORD', '')
+    )
+
+    # In local DEBUG, missing credentials should not break startup: use the
+    # console backend. Outside DEBUG, partial SMTP config is a deploy error.
+    if not host:
+        return {}  # No SMTP configured: console backend (dev default).
+    if debug and not password:
+        return {}
+    missing = [
+        name
+        for name, value in (
+            ('EMAIL_HOST_USER', user),
+            ('EMAIL_HOST_PASSWORD', password),
+        )
+        if not value
+    ]
+    if missing:
+        raise ImproperlyConfigured(
+            f"EMAIL_HOST is set ({host}) but {', '.join(missing)} "
+            "is missing or empty. Set all three in backend/.env — for Gmail, "
+            "EMAIL_HOST_PASSWORD must be a Google App Password, not your login "
+            "password. See .env.example."
+        )
+
+    use_tls = _env_bool('EMAIL_USE_TLS', None)
+    use_ssl = _env_bool('EMAIL_USE_SSL', None)
+    if use_tls is None and use_ssl is None and 'EMAIL_SECURE' in os.environ:
+        secure = _env_bool('EMAIL_SECURE', False)
+        use_ssl = bool(secure)
+        use_tls = not use_ssl
+    elif use_tls is None and use_ssl is None:
+        use_tls = _env_bool('EMAIL_SMTP_TLS', True)
+        use_ssl = False
+    else:
+        use_tls = bool(use_tls)
+        use_ssl = bool(use_ssl)
+
+    if use_tls and use_ssl:
+        raise ImproperlyConfigured(
+            "EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be true."
+        )
+
+    default_port = 465 if use_ssl else 587
+    port_raw = _env_string('EMAIL_PORT', 'EMAIL_SMTP_PORT', default=str(default_port))
+    try:
+        port = int(port_raw)
+    except ValueError:
+        raise ImproperlyConfigured(
+            f"EMAIL_PORT={port_raw!r} is not a valid port number."
+        ) from None
+
+    # Reject the two pairings that can never work with Gmail-style servers
+    # instead of failing later with a cryptic dropped connection.
+    if port == 587 and use_ssl:
+        raise ImproperlyConfigured(
+            "Invalid SMTP pairing: port 587 with EMAIL_USE_SSL=true. "
+            "Port 587 needs STARTTLS (EMAIL_USE_TLS=true, EMAIL_USE_SSL=false); "
+            "implicit SSL needs port 465."
+        )
+    if port == 465 and not use_ssl:
+        raise ImproperlyConfigured(
+            "Invalid SMTP pairing: port 465 without EMAIL_USE_SSL=true. "
+            "Port 465 needs implicit SSL; STARTTLS needs port 587."
+        )
+
+    return {
+        'host': host,
+        'port': port,
+        'username': user,
+        'password': password,
+        'use_tls': use_tls,
+        'use_ssl': use_ssl,
+        'timeout': _env_int('EMAIL_TIMEOUT', 10),
+    }
+
+
+def _clean_password(raw: str) -> str:
+    """Normalize a pasted secret: drop one layer of surrounding quotes, then
+    remove ALL whitespace. Gmail shows App Passwords grouped with spaces
+    ("xxxx xxxx xxxx xxxx") and SMTP login expects the 16 characters
+    concatenated; pasted padding or quotes otherwise cause a 535 rejection.
+    (The value itself is never logged anywhere; see mailer.py.)"""
+    value = (raw or "").strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1]
+    return "".join(value.split())
+
+
+_SMTP_OPTIONS = _smtp_options()
+_EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if _SMTP_OPTIONS
+    else 'django.core.mail.backends.console.EmailBackend'
+)
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': _EMAIL_BACKEND,
+        **({'OPTIONS': _SMTP_OPTIONS} if _SMTP_OPTIONS else {}),
     },
 }
+
+def _noreply_from_email() -> str:
+    """Sender identity: full DEFAULT_FROM_EMAIL wins, else build noreply@<domain>.
+
+    Keep NOREPLY_EMAIL_DOMAIN pointed at a domain you own in production
+    (with SPF/DKIM/DMARC, see README "Email deliverability"). The mailbox
+    itself should bounce or blackhole — nobody reads it.
+    """
+    explicit = _env_string('DEFAULT_FROM_EMAIL', 'EMAIL_FROM')
+    if explicit:
+        return explicit
+    domain = os.environ.get('NOREPLY_EMAIL_DOMAIN', 'sabhagachhi.local')
+    return f'Sabha Gachhi <noreply@{domain}>'
+
+
+DEFAULT_FROM_EMAIL = _noreply_from_email()
+SERVER_EMAIL = _env_string('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
+# ---------------------------------------------------------------------------
+# Email verification (phase 1 of stronger auth; phone/SMS comes in phase 2)
+# ---------------------------------------------------------------------------
+# "link" (default) or "otp". OTP reuses the same token model/lifecycle.
+EMAIL_VERIFICATION_METHOD = os.environ.get('EMAIL_VERIFICATION_METHOD', 'link')
+EMAIL_LINK_EXPIRY_MINUTES = int(os.environ.get('EMAIL_LINK_EXPIRY_MINUTES', '60'))
+EMAIL_OTP_EXPIRY_MINUTES = int(os.environ.get('EMAIL_OTP_EXPIRY_MINUTES', '10'))
+# Pluggable mailer provider: dotted path to a
+#   send(subject, text_body, html_body, from_email, to_email) callable.
+# Unset = Django send_mail (honours EMAIL_BACKEND above).
+EMAIL_VERIFICATION_PROVIDER = os.environ.get('EMAIL_VERIFICATION_PROVIDER') or None
+# Resend limits: 60s cooldown/user, 5/day/user (strict, identity-bound),
+# 100/day/IP (loose on purpose — campuses/offices share one NAT address;
+# the per-user cap is the real abuse control, the IP cap only catches
+# distributed floods).
+RESEND_MAX_PER_USER_PER_DAY = int(os.environ.get('RESEND_MAX_PER_USER_PER_DAY', '5'))
+RESEND_MAX_PER_IP_PER_DAY = int(os.environ.get('RESEND_MAX_PER_IP_PER_DAY', '100'))
+# Trust X-Forwarded-For only behind this many known proxies (0 = never;
+# always use the direct peer). XFF is client-spoofable otherwise.
+TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '0'))
+# Disposable-email blocking (built-in list + DISPOSABLE_EMAIL_DOMAINS extra).
+BLOCK_DISPOSABLE_EMAILS = os.environ.get('BLOCK_DISPOSABLE_EMAILS', 'true').lower() == 'true'
+DISPOSABLE_EMAIL_DOMAINS = [
+    d.strip().lower()
+    for d in os.environ.get('DISPOSABLE_EMAIL_DOMAINS', '').split(',')
+    if d.strip()
+]
+# CAPTCHA hook (Turnstile/reCAPTCHA) on signup + resend. Off by default;
+# set CAPTCHA_REQUIRED=true and CAPTCHA_VERIFIER=<dotted path> to enforce.
+CAPTCHA_REQUIRED = os.environ.get('CAPTCHA_REQUIRED', 'false').lower() == 'true'
+CAPTCHA_VERIFIER = os.environ.get('CAPTCHA_VERIFIER') or None
+
+# ---------------------------------------------------------------------------
+# Channel-agnostic OTP (email today, phone later via SENDERS registry)
+# ---------------------------------------------------------------------------
+OTP_EXPIRY_MINUTES = int(os.environ.get('OTP_EXPIRY_MINUTES', '10'))
+OTP_MAX_ATTEMPTS = int(os.environ.get('OTP_MAX_ATTEMPTS', '5'))
+OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get('OTP_RESEND_COOLDOWN_SECONDS', '60'))
+# Max OTP sends per (user, channel, target) per hour before 429.
+OTP_MAX_SENDS_PER_HOUR_PER_TARGET = int(
+    os.environ.get('OTP_MAX_SENDS_PER_HOUR_PER_TARGET', '5')
+)
+
+
+# ---------------------------------------------------------------------------
+# Logging: mailer + audit INFO to console in DEBUG (incl. DEV codes).
+# Raw codes are only ever logged when DEBUG is True (see mailer + senders).
+# ---------------------------------------------------------------------------
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '{levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'plain',
+            'level': 'INFO' if DEBUG else 'WARNING',
+        },
+    },
+    'loggers': {
+        'accounts.mailer': {
+            'handlers': ['console'],
+            'level': 'INFO' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+        'accounts.audit': {
+            'handlers': ['console'],
+            'level': 'INFO' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Phone verification (phase 2). Extends the email patterns above.
+# ---------------------------------------------------------------------------
+# Countries allowed to receive OTPs (config-only change, no deploy).
+PHONE_ALLOWED_COUNTRIES = [
+    c.strip().upper()
+    for c in os.environ.get('PHONE_ALLOWED_COUNTRIES', 'NP,IN').split(',')
+    if c.strip()
+]
+# "custom" (default: local OTP via SMS gateway) or "managed" (Twilio Verify /
+# Firebase-style: provider sends AND checks codes; we store no OTP material).
+PHONE_VERIFICATION_PROVIDER_MODE = os.environ.get('PHONE_VERIFICATION_PROVIDER_MODE', 'custom')
+PHONE_OTP_EXPIRY_MINUTES = int(os.environ.get('PHONE_OTP_EXPIRY_MINUTES', '5'))
+PHONE_OTP_MAX_ATTEMPTS = int(os.environ.get('PHONE_OTP_MAX_ATTEMPTS', '5'))
+# Email must verify before phone OTPs are issued (recommended order).
+PHONE_REQUIRE_EMAIL_FIRST = os.environ.get('PHONE_REQUIRE_EMAIL_FIRST', 'true').lower() == 'true'
+# Per-day caps: per user, per destination number, per IP.
+PHONE_MAX_PER_USER_PER_DAY = int(os.environ.get('PHONE_MAX_PER_USER_PER_DAY', '5'))
+PHONE_MAX_PER_NUMBER_PER_DAY = int(os.environ.get('PHONE_MAX_PER_NUMBER_PER_DAY', '3'))
+PHONE_MAX_PER_IP_PER_DAY = int(os.environ.get('PHONE_MAX_PER_IP_PER_DAY', '10'))
+# Cost/abuse circuit breakers: per-country sends/hour, global sends/day,
+# distinct numbers per IP/hour (burst), fail-ratio watchdog tuning.
+PHONE_COUNTRY_HOURLY_CAP = int(os.environ.get('PHONE_COUNTRY_HOURLY_CAP', '50'))
+PHONE_GLOBAL_DAILY_CAP = int(os.environ.get('PHONE_GLOBAL_DAILY_CAP', '1000'))
+PHONE_BURST_DISTINCT_NUMBERS = int(os.environ.get('PHONE_BURST_DISTINCT_NUMBERS', '8'))
+PHONE_FAIL_RATIO_MIN_SENDS = int(os.environ.get('PHONE_FAIL_RATIO_MIN_SENDS', '20'))
+PHONE_FAIL_RATIO_ALERT = float(os.environ.get('PHONE_FAIL_RATIO_ALERT', '0.9'))
+# Line-type policy: landlines always rejected; VoIP blocked when known
+# (flag PHONE_BLOCK_VOIP); lookup-failure handling: "allow" (+ risk flag) | "block".
+PHONE_BLOCK_VOIP = os.environ.get('PHONE_BLOCK_VOIP', 'true').lower() == 'true'
+PHONE_LOOKUP_FAIL_MODE = os.environ.get('PHONE_LOOKUP_FAIL_MODE', 'allow')
+# Provider routing: default + longest-prefix table, e.g.
+# PHONE_SMS_ROUTES_JSON='{"+977": "console", "+91": "twilio_sms"}'.
+PHONE_SMS_PROVIDER = os.environ.get('PHONE_SMS_PROVIDER', 'console')
+try:
+    import json as _json
+    PHONE_SMS_ROUTES = _json.loads(os.environ.get('PHONE_SMS_ROUTES_JSON', '{}') or '{}')
+except Exception:
+    PHONE_SMS_ROUTES = {}
+# Twilio (SMS gateway and/or Verify + Lookup). Unset = lookup skipped,
+# console provider used. Never commit these.
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_SENDER_ID = os.environ.get('TWILIO_SENDER_ID', '')
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get('TWILIO_MESSAGING_SERVICE_SID', '')
+TWILIO_VERIFY_SERVICE_SID = os.environ.get('TWILIO_VERIFY_SERVICE_SID', '')
+# India DLT (required for +91 delivery): register entity + template, then fill in.
+DLT_ENTITY_ID = os.environ.get('DLT_ENTITY_ID', '')
+DLT_TEMPLATE_ID = os.environ.get('DLT_TEMPLATE_ID', '')
+DLT_SENDER_ID = os.environ.get('DLT_SENDER_ID', '')
 
 DEFAULT_AUTO_FIELD = "django_mongodb_backend.fields.ObjectIdAutoField"
 CORS_ALLOWED_ORIGINS = [
@@ -182,4 +504,5 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_IMPORTS = ('registrations.tasks',)
 CELERY_TASK_ACKS_LATE = True
-CELERY_WORKER_DISABLE_RATE_LIMITS = True
+CELERY_WORKER_DISABLE_RATE_LIMITS = True 
+CELERY_TASK_ALWAYS_EAGER = True
