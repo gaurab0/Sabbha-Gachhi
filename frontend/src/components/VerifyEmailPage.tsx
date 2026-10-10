@@ -43,6 +43,7 @@ export function VerifyEmailPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
+  const [meLoaded, setMeLoaded] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [sending, setSending] = useState(false);
   // Single-flight guard: rapid clicks must not fire parallel requests.
@@ -68,6 +69,7 @@ export function VerifyEmailPage() {
         if (!token) {
           setOtpMode(me.verification_method === "otp");
         }
+        setMeLoaded(true);
         // Verification order is email, then phone.
         if (me.email_verified) {
           navigate(me.phone_verified ? "/" : "/verify-phone", { replace: true });
@@ -214,6 +216,19 @@ export function VerifyEmailPage() {
     return null;
   }
 
+  // Neutral state until /me/ answers: never assume a mode (and its copy)
+  // before the server has told us which one it issues.
+  if (!meLoaded) {
+    return (
+      <div className="ve-wrap">
+        <style>{STYLES}</style>
+        <main className="ve-card">
+          <p className="ve-muted">Checking your verification status…</p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="ve-wrap">
       <style>{STYLES}</style>
@@ -248,13 +263,15 @@ export function VerifyEmailPage() {
                 ? `Resend in ${cooldown}s`
                 : "Resend verification"}
           </button>
-          <button
-            type="button"
-            className="ve-btn ve-btn-ghost"
-            onClick={() => setOtpMode((m) => !m)}
-          >
-            {otpMode ? "Use email link instead" : "Enter a code instead"}
-          </button>
+          {token && (
+            <button
+              type="button"
+              className="ve-btn ve-btn-ghost"
+              onClick={() => setOtpMode((m) => !m)}
+            >
+              {otpMode ? "Use email link instead" : "Enter a code instead"}
+            </button>
+          )}
         </div>
 
         {otpMode && (
