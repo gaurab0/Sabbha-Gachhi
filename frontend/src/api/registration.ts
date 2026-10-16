@@ -38,7 +38,7 @@ export interface RegistrationStatusResponse {
   candidate_name: string;
   guardian_name: string;
   verification_status: "pending" | "verified";
-  match: MatchProposalResponse | null;
+  matches: MatchProposalResponse[];
   withdrawn: boolean;
 }
 
@@ -62,6 +62,21 @@ export interface ConcernReportPayload {
   contactBack: string;
 }
 
+export interface MatchContactResponse {
+  photo_url: string;
+  email: string;
+  phone: string;
+}
+
+export const WITHDRAW_REASONS = [
+  "Found a match through Sabha Gachhi",
+  "Found a match elsewhere",
+  "Not ready right now",
+  "Other",
+] as const;
+
+export type WithdrawReason = (typeof WITHDRAW_REASONS)[number];
+
 // -------------------------------------------------------------- Calls --
 
 export function submitRegistration(payload: RegistrationPayload) {
@@ -75,14 +90,19 @@ export function fetchMyRegistrationStatus() {
   return apiRequest<RegistrationStatusResponse>("/registrations/me/status/");
 }
 
-export function withdrawMyRegistration() {
+export function withdrawMyRegistration(reason?: string) {
   return apiRequest<void>("/registrations/me/withdraw/", {
     method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
   });
 }
 
 export function fetchMatchProposal(matchId: string) {
   return apiRequest<MatchProposalResponse>(`/match-proposals/${matchId}/`);
+}
+
+export function fetchMatchContact(matchId: string) {
+  return apiRequest<MatchContactResponse>(`/match-proposals/${matchId}/contact/`);
 }
 
 export function respondToMatchProposal(

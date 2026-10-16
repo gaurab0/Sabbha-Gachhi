@@ -158,10 +158,10 @@ class MatchProposalSerializer(serializers.ModelSerializer):
 class RegistrationStatusSerializer(serializers.ModelSerializer):
     """
     Matches the RegistrationStatus interface from StatusPage.tsx.
-    Surfaces only the most recent non-declined match proposal, if any.
+    Returns ALL non-declined match proposals for the registration.
     """
     candidate_name = serializers.CharField(source="candidate_full_name")
-    match = serializers.SerializerMethodField()
+    matches = serializers.SerializerMethodField()
 
     class Meta:
         model = Registration
@@ -170,20 +170,18 @@ class RegistrationStatusSerializer(serializers.ModelSerializer):
             "candidate_name",
             "guardian_name",
             "verification_status",
-            "match",
+            "matches",
             "withdrawn",
             "withdrawn_at",
         ]
 
-    def get_match(self, obj):
-        proposal = obj.match_proposals.exclude(
+    def get_matches(self, obj):
+        proposals = obj.match_proposals.exclude(
             your_response=MatchProposal.PartyResponse.DECLINED
         ).exclude(
             other_response=MatchProposal.PartyResponse.DECLINED
-        ).first()
-        if not proposal:
-            return None
-        return MatchProposalSerializer(proposal).data
+        )
+        return MatchProposalSerializer(proposals, many=True).data
 
 
 class ConcernReportSerializer(serializers.ModelSerializer):

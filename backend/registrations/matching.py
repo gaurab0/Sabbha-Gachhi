@@ -1,18 +1,16 @@
 """
 Automated matching pipeline.
 
-Flow, per the earlier design discussion:
+Flow:
   1. Pool filter (hard, non-negotiable): opposite gender, both verified,
-     neither withdrawn, neither already in an active proposal.
-  2. Sapinda gate (hard, non-negotiable): registrations.sapinda.check_sapinda_conflict.
-  3. If exactly one candidate survives steps 1-2 -> propose them.
-  4. If multiple survive -> use preferences (age range, location, education)
-     as TIE-BREAKERS to rank, not to exclude.
+     neither withdrawn.
+  2. Sapinda gate (hard, non-negotiable): check_sapinda_conflict.
+  3. ALL candidates that pass steps 1-2 become matches (multiple matches allowed).
+  4. Preferences (age range, location, education) used as TIE-BREAKERS to rank.
   5. If none survive -> no proposal is created; the registration remains
-     unmatched until the pipeline runs again (e.g. when a new registration
-     is verified).
+     unmatched until the pipeline runs again.
 
-Every call to find_match_for() writes a MatchAttemptLog entry, regardless
+Every call to find_matches_for() writes a MatchAttemptLog entry, regardless
 of outcome — this is the accountability trail for a system that runs with
 no human review step before a proposal is sent.
 """
@@ -33,14 +31,11 @@ def _opposite_gender(gender: str) -> str:
     )
 
 
-def _has_active_proposal(registration: Registration) -> bool:
-    """
-    'Active' = not fully resolved. A proposal is resolved once either side
-    has declined. Anything still pending/accepted-waiting counts as active,
-    since we don't want to double-propose someone mid-conversation.
-    """
+def _has_active_proposal_for_pair(registration: Registration, candidate: Registration) -> bool:
+    """Check if an active proposal already exists for this specific pair."""
     return MatchProposal.objects.filter(
-        registration=registration
+        Q(registration=registration, paired_proposal__registration=candidate) |
+        Q(registration=candidate, paired_proposal__registration=registration)
     ).exclude(
         Q(your_response=MatchProposal.PartyResponse.DECLINED)
         | Q(other_response=MatchProposal.PartyResponse.DECLINED)
@@ -69,46 +64,46 @@ def _preference_score(registration: Registration, candidate: Registration) -> in
     score = 0
 
     candidate_age = _age_years(candidate.candidate_dob)
-    if registration.preferred_age_min and candidate_age < registration.preferred_age_min:
-        score += (registration.preferred_age_min - candidate_age)
-    if registration.preferred_age_max and candidate_age > registration.preferred_age_max:
-        score += (candidate_age - registration.preferred_age_max)
+    pref_age_min = getattr(registration, 'preferred_age_min', None)
+    pref_age_max = getattr(registration, 'preferred_age_max', None)
+    if pref_age_min and candidate_age < pref_age_min:
+        score += (pref_age_min - candidate_age)
+    if pref_age_max and candidate_age > pref_age_max:
+        score += (candidate_age - pref_age_max)
 
+    pref_location = getattr(registration, 'preferred_location', None)
     if (
-        registration.preferred_location
+        pref_location
         and candidate.candidate_current_city.strip().lower()
-        != registration.preferred_location.strip().lower()
+        != pref_location.strip().lower()
     ):
         score += 5
 
+    pref_education = getattr(registration, 'preferred_education', None)
     if (
-        registration.preferred_education
+        pref_education
         and candidate.candidate_education.strip().lower()
-        != registration.preferred_education.strip().lower()
+        != pref_education.strip().lower()
     ):
         score += 3
 
     return score
 
 
-def find_match_for(registration: Registration):
+def find_matches_for(registration: Registration):
     """
-    Runs the full pipeline for a single registration. Returns the matched
-    Registration, or None if nobody currently qualifies. Always writes a
-    MatchAttemptLog entry, regardless of outcome, so every automated
-    decision is traceable after the fact.
+    Runs the full pipeline for a single registration. Returns a list of
+    matched Registrations (may be empty). Always writes a MatchAttemptLog
+    entry, regardless of outcome, so every automated decision is traceable.
     """
-    if _has_active_proposal(registration):
-        return None
-
     considered = []
     eligible = []
 
     for candidate in _candidate_pool(registration):
-        if _has_active_proposal(candidate):
+        if _has_active_proposal_for_pair(registration, candidate):
             considered.append({
                 "candidate_reference": candidate.reference,
-                "skipped_reason": "candidate already has an active proposal",
+                "skipped_reason": "candidate already has an active proposal with this registration",
             })
             continue
 
@@ -134,59 +129,80 @@ def find_match_for(registration: Registration):
             candidates_considered=considered,
             sapinda_rules_version=SAPINDA_RULES_VERSION,
         )
-        return None
+        return []
 
+    # Sort by preference score (lower is better) but keep all eligible
     eligible.sort(key=lambda c: _preference_score(registration, c))
-    chosen = eligible[0]
 
     MatchAttemptLog.objects.create(
         registration=registration,
         outcome=MatchAttemptLog.Outcome.MATCHED,
-        matched_registration=chosen,
+        matched_registration=eligible[0],
         candidates_considered=considered,
         sapinda_rules_version=SAPINDA_RULES_VERSION,
     )
 
-    return chosen
+    return eligible
 
 
 def create_automated_proposal(registration: Registration) -> MatchProposal | None:
     """
-    Finds a match and creates the MatchProposal record. Returns None (and
-    creates nothing) if no eligible candidate currently exists.
+    Finds all eligible matches and creates MatchProposal records for each.
+    Returns the first created proposal (for backward compatibility) or None.
+    Idempotent per pair: skips pairs that already have an active proposal.
     """
-    match = find_match_for(registration)
-    if match is None:
+    from django.db import transaction, models
+
+    matches = find_matches_for(registration)
+    if not matches:
         return None
 
-    shared_details = [
-        f"From {match.candidate_current_city}" if match.candidate_current_city else None,
-        f"Age {_age_years(match.candidate_dob)}",
-        f"Works as {match.candidate_occupation}" if match.candidate_occupation else None,
-        f"Educated: {match.candidate_education}" if match.candidate_education else None,
-    ]
-    shared_details = [d for d in shared_details if d]
+    first_proposal = None
 
-    proposal_for_registration = MatchProposal.objects.create(
-        registration=registration,
-        shared_by_panjikar="Matched by Sabha Gachhi",
-        shared_details=shared_details,
-    )
+    for match in matches:
+        with transaction.atomic():
+            # Check if proposal already exists for this pair
+            has_proposal_for_pair = MatchProposal.objects.filter(
+                models.Q(registration=registration, paired_proposal__registration=match) |
+                models.Q(registration=match, paired_proposal__registration=registration)
+            ).exclude(
+                models.Q(your_response=MatchProposal.PartyResponse.DECLINED)
+                | models.Q(other_response=MatchProposal.PartyResponse.DECLINED)
+            ).exists()
+            if has_proposal_for_pair:
+                continue
 
-    proposal_for_match = MatchProposal.objects.create(
-        registration=match,
-        shared_by_panjikar="Matched by Sabha Gachhi",
-        shared_details=[
-            f"From {registration.candidate_current_city}" if registration.candidate_current_city else None,
-            f"Age {_age_years(registration.candidate_dob)}",
-            f"Works as {registration.candidate_occupation}" if registration.candidate_occupation else None,
-        ],
-    )
+            shared_details = [
+                f"From {match.candidate_current_city}" if match.candidate_current_city else None,
+                f"Age {_age_years(match.candidate_dob)}",
+                f"Works as {match.candidate_occupation}" if match.candidate_occupation else None,
+                f"Educated: {match.candidate_education}" if match.candidate_education else None,
+            ]
+            shared_details = [d for d in shared_details if d]
 
-    # Link the two rows so accept/decline on one side can mirror onto the other.
-    proposal_for_registration.paired_proposal = proposal_for_match
-    proposal_for_registration.save(update_fields=["paired_proposal"])
-    proposal_for_match.paired_proposal = proposal_for_registration
-    proposal_for_match.save(update_fields=["paired_proposal"])
+            proposal_for_registration = MatchProposal.objects.create(
+                registration=registration,
+                shared_by_panjikar="Matched by Sabha Gachhi",
+                shared_details=shared_details,
+            )
 
-    return proposal_for_registration
+            proposal_for_match = MatchProposal.objects.create(
+                registration=match,
+                shared_by_panjikar="Matched by Sabha Gachhi",
+                shared_details=[
+                    f"From {registration.candidate_current_city}" if registration.candidate_current_city else None,
+                    f"Age {_age_years(registration.candidate_dob)}",
+                    f"Works as {registration.candidate_occupation}" if registration.candidate_occupation else None,
+                ],
+            )
+
+            # Link the two rows so accept/decline on one side can mirror onto the other.
+            proposal_for_registration.paired_proposal = proposal_for_match
+            proposal_for_registration.save(update_fields=["paired_proposal"])
+            proposal_for_match.paired_proposal = proposal_for_registration
+            proposal_for_match.save(update_fields=["paired_proposal"])
+
+            if first_proposal is None:
+                first_proposal = proposal_for_registration
+
+    return first_proposal

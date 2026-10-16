@@ -73,6 +73,8 @@ class Registration(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     withdrawn = models.BooleanField(default=False)
     withdrawn_at = models.DateTimeField(null=True, blank=True)
+    # Optional reason captured by the withdraw confirmation dialog.
+    withdrawn_reason = models.CharField(max_length=200, blank=True)
 
     # ---- Guardian details (GuardianDetails) --------------------------------
     guardian_name = models.CharField(max_length=150)
@@ -89,6 +91,11 @@ class Registration(models.Model):
     candidate_education = models.CharField(max_length=200, blank=True)
     candidate_occupation = models.CharField(max_length=200, blank=True)
     candidate_current_city = models.CharField(max_length=150, blank=True)
+    # Optional photo URL for the candidate, set via admin. There is no file
+    # upload/storage in this project, so this holds an external URL (or a
+    # signed URL issued elsewhere). Blank means "no photo": the frontend
+    # shows a neutral avatar fallback and never a broken image.
+    candidate_photo = models.CharField(max_length=500, blank=True)
 
     # ---- Lineage (Lineage / LineageEntry) — embedded, not a separate table
     gotra = models.CharField(max_length=150, blank=True)
