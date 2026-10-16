@@ -9,7 +9,8 @@ Tests cover:
 
 from datetime import date
 
-from django.test import TestCase
+from django.db import IntegrityError
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from unittest import skip
 from unittest.mock import patch, MagicMock
@@ -52,7 +53,20 @@ def _make_registration(**kwargs):
         "preferred_occupation": "Software Engineer",
     }
     defaults.update(kwargs)
+    prefs = {
+        k: defaults.pop(k)
+        for k in [
+            "preferred_age_min",
+            "preferred_age_max",
+            "preferred_location",
+            "preferred_education",
+            "preferred_occupation",
+        ]
+        if k in defaults
+    }
     reg = Registration(**defaults)
+    for k, v in prefs.items():
+        setattr(reg, k, v)
     return reg
 
 
@@ -787,4 +801,349 @@ class TestMatchingPipelineMultiple(TestCase):
         # Should only have one proposal pair
         proposals = MatchProposal.objects.filter(registration=bride)
         self.assertEqual(proposals.count(), 1)
+
+
+# ---------------------------------------------------------------------------
+# Test: Automated Matching Engine Bug Fixes (Bugs 1-6)
+# ---------------------------------------------------------------------------
+
+class TestAutomatedMatchingEngineBugFixes(TestCase):
+    """Tests covering Bug 1 through Bug 6 deliverables."""
+
+    def _make_reg(
+        self,
+        email,
+        gender,
+        gotra="Kashyapa",
+        moolgram="Rampur",
+        dob=date(1995, 6, 15),
+        city="Patna",
+        education="Engineering",
+        occupation="Engineer",
+        **kwargs,
+    ):
+        User = get_user_model()
+        user = User.objects.create_user(email=email, password="testpass", email_verified=True)
+        tag = _unique(email)
+        ref = f"SG-{tag[:10].upper()}"
+        pref_keys = [
+            "preferred_age_min",
+            "preferred_age_max",
+            "preferred_location",
+            "preferred_education",
+            "preferred_occupation",
+        ]
+        prefs = {k: kwargs.pop(k) for k in pref_keys if k in kwargs}
+        defaults = {
+            "owner": user,
+            "reference": ref,
+            "candidate_full_name": f"Candidate {email}",
+            "candidate_gender": gender,
+            "verification_status": Registration.VerificationStatus.VERIFIED,
+            "candidate_dob": dob,
+            "gotra": gotra,
+            "mool_gram": moolgram,
+            "candidate_current_city": city,
+            "candidate_education": education,
+            "candidate_occupation": occupation,
+        }
+        defaults.update(kwargs)
+        reg = Registration.objects.create(**defaults)
+        for k, v in prefs.items():
+            setattr(reg, k, v)
+        return reg
+
+    def test_1_multiple_eligible_candidates_produce_multiple_matches_and_proposals(self):
+        """1. Multiple eligible candidates produce multiple Match rows and proposal pairs."""
+        bride = self._make_reg("bride1@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom1 = self._make_reg("groom1_1@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+        groom2 = self._make_reg("groom1_2@test.com", Registration.Gender.GROOM, "Bharadwaja", "Lucknow", dob=date(1992, 5, 10))
+
+        result = run_matching_engine(bride)
+        self.assertEqual(len(result["final_matches"]), 2)
+        self.assertEqual(Match.objects.filter(registration=bride).count(), 2)
+        self.assertEqual(MatchProposal.objects.filter(registration=bride).count(), 2)
+        for prop in MatchProposal.objects.filter(registration=bride):
+            self.assertIsNotNone(prop.paired_proposal)
+            self.assertEqual(prop.paired_proposal.paired_proposal, prop)
+
+    def test_2_retry_scenario_heals_incomplete_matches(self):
+        """2. Retry scenario: simulate create failure after Match creation, run again, assert proposals created and no duplicate."""
+        bride = self._make_reg("bride2@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom = self._make_reg("groom2@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        orig_create = MatchProposal.objects.create
+        call_count = [0]
+
+        def fail_once(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise RuntimeError("Simulated crash during proposal creation")
+            return orig_create(*args, **kwargs)
+
+        with patch.object(MatchProposal.objects, "create", side_effect=fail_once):
+            with self.assertRaises(RuntimeError):
+                run_matching_engine(bride)
+
+        # Match row exists from before crash, but proposals do not
+        self.assertEqual(Match.objects.filter(registration=bride).count(), 1)
+        self.assertEqual(MatchProposal.objects.filter(registration=bride).count(), 0)
+
+        # Retry run: must self-heal and create proposals without duplicating Match
+        result = run_matching_engine(bride)
+        self.assertEqual(len(result["final_matches"]), 1)
+        self.assertEqual(Match.objects.filter(registration=bride).count(), 1)
+        self.assertEqual(MatchProposal.objects.filter(registration=bride).count(), 1)
+        prop = MatchProposal.objects.get(registration=bride)
+        self.assertIsNotNone(prop.paired_proposal)
+
+        # Audit log records PROPOSAL_HEALED
+        log = MatchAttemptLog.objects.filter(registration=bride).first()
+        accepted_entry = [c for c in log.candidates_considered if c["decision"] == "accepted"][0]
+        reasons_codes = [r["code"] for r in accepted_entry["reasons"]]
+        self.assertIn("PROPOSAL_HEALED", reasons_codes)
+
+    def test_3_unordered_pair_db_integrity_error_and_graceful_handling(self):
+        """3. (A,B) and (B,A) cannot both exist: assert IntegrityError at DB level, and engine handles gracefully."""
+        bride = self._make_reg("bride3@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom = self._make_reg("groom3@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        # Direct DB creation of (bride, groom)
+        Match.objects.create(registration=bride, candidate=groom)
+
+        # Direct DB creation of reverse (groom, bride) must raise IntegrityError
+        with self.assertRaises(IntegrityError):
+            Match.objects.create(registration=groom, candidate=bride)
+
+        # Running engine for groom after bride must handle gracefully without exception or duplicates
+        result = run_matching_engine(groom)
+        self.assertIsNotNone(result)
+        low_id = min(str(bride.pk), str(groom.pk))
+        high_id = max(str(bride.pk), str(groom.pk))
+        self.assertEqual(Match.objects.filter(pair_low_id=low_id, pair_high_id=high_id).count(), 1)
+
+    def test_4_concurrency_reverse_match_preinserted(self):
+        """4. Concurrency-style test: pre-insert reverse-direction Match, then run engine and assert no exception and no duplicate."""
+        bride = self._make_reg("bride4@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom = self._make_reg("groom4@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        # Pre-insert reverse match as if another worker ran
+        Match.objects.create(registration=groom, candidate=bride, score=0.0)
+
+        # Engine run for bride: no duplicate, heals proposals, completes cleanly
+        result = run_matching_engine(bride)
+        self.assertIsNotNone(result)
+        self.assertEqual(Match.objects.count(), 1)
+        self.assertEqual(MatchProposal.objects.count(), 2)
+
+    def test_5_preference_scoring_and_deterministic_ranking(self):
+        """5. Preference scoring: ranking order is correct, preferences never exclude, ties break by pk, score stored."""
+        bride = self._make_reg(
+            "bride5@test.com",
+            Registration.Gender.BRIDE,
+            "Kashyapa",
+            "Rampur",
+            dob=date(1995, 6, 15),
+            preferred_age_min=25,
+            preferred_age_max=35,
+            preferred_location="Patna",
+            preferred_education="Engineering",
+        )
+        # Perfect: score 0
+        groom_p = self._make_reg(
+            "groom5_p@test.com",
+            Registration.Gender.GROOM,
+            "Atri",
+            "Sitapur",
+            dob=date(1993, 6, 15),
+            city="Patna",
+            education="Engineering",
+        )
+        # Moderate: city mismatch (+5) -> score 5
+        groom_c1 = self._make_reg(
+            "groom5_c1@test.com",
+            Registration.Gender.GROOM,
+            "Bharadwaja",
+            "Lucknow",
+            dob=date(1993, 6, 15),
+            city="Delhi",
+            education="Engineering",
+        )
+        # Moderate tie: same score 5 as c1, but distinct pk
+        groom_c2 = self._make_reg(
+            "groom5_c2@test.com",
+            Registration.Gender.GROOM,
+            "Vashistha",
+            "Varanasi",
+            dob=date(1993, 6, 15),
+            city="Delhi",
+            education="Engineering",
+        )
+        # Worse: city (+5) and edu (+3) mismatch -> score 8
+        groom_b = self._make_reg(
+            "groom5_b@test.com",
+            Registration.Gender.GROOM,
+            "Garg",
+            "Ayodhya",
+            dob=date(1993, 6, 15),
+            city="Delhi",
+            education="Commerce",
+        )
+
+        result = run_matching_engine(bride)
+        final = result["final_matches"]
+        self.assertEqual(len(final), 4)
+
+        # Assert ranking order: perfect first (score 0), then ties (score 5) broken by pk, then score 8
+        self.assertEqual(final[0][0].pk, groom_p.pk)
+        self.assertEqual(final[0][1], 0.0)
+
+        # Tied candidates (c1 and c2) both have score 5.0 and are ordered deterministically by pk
+        tied_candidates = sorted([groom_c1, groom_c2], key=lambda c: str(c.pk))
+        self.assertEqual(final[1][0].pk, tied_candidates[0].pk)
+        self.assertEqual(final[1][1], 5.0)
+        self.assertEqual(final[2][0].pk, tied_candidates[1].pk)
+        self.assertEqual(final[2][1], 5.0)
+
+        self.assertEqual(final[3][0].pk, groom_b.pk)
+        self.assertEqual(final[3][1], 8.0)
+
+        m_p = Match.objects.get(candidate=groom_p)
+        self.assertEqual(m_p.score, 0.0)
+
+    @override_settings(MAX_MATCHES_PER_REGISTRATION=2)
+    def test_6_match_cap_limits_matches_and_repeated_run_does_not_exceed(self):
+        """6. Cap: with MAX_MATCHES_PER_REGISTRATION=2 and 5 eligible candidates, exactly 2 Matches created, others recorded as eligible_not_selected / CAP_REACHED."""
+        bride = self._make_reg("bride6@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        grooms = [
+            self._make_reg(f"groom6_{i}@test.com", Registration.Gender.GROOM, f"Gotra{i}", f"Village{i}", dob=date(1993, 1, 1))
+            for i in range(5)
+        ]
+
+        result = run_matching_engine(bride)
+        self.assertEqual(len(result["final_matches"]), 2)
+        self.assertEqual(Match.objects.filter(registration=bride).count(), 2)
+
+        log = MatchAttemptLog.objects.filter(registration=bride).first()
+        considered = log.candidates_considered
+        accepted = [c for c in considered if c["decision"] == "accepted"]
+        capped = [c for c in considered if c["decision"] == "eligible_not_selected"]
+        self.assertEqual(len(accepted), 2)
+        self.assertEqual(len(capped), 3)
+        for c in capped:
+            reasons = [r["code"] for r in c["reasons"]]
+            self.assertIn("CAP_REACHED", reasons)
+
+        # Second run does not exceed cap
+        result2 = run_matching_engine(bride)
+        self.assertEqual(Match.objects.filter(registration=bride).count(), 2)
+
+    def test_7_declined_pair_is_not_reproposed(self):
+        """7. Declined pair is not re-proposed."""
+        bride = self._make_reg("bride7@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom = self._make_reg("groom7@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        prop = create_automated_proposal(bride)
+        self.assertIsNotNone(prop)
+
+        # Decline the proposal
+        prop.your_response = MatchProposal.PartyResponse.DECLINED
+        prop.save(update_fields=["your_response"])
+
+        # Run again
+        result = run_matching_engine(bride)
+        self.assertEqual(len(result["final_matches"]), 0)
+        log = MatchAttemptLog.objects.filter(registration=bride).first()
+        declined_entry = [c for c in log.candidates_considered if c["candidate_reference"] == groom.reference][0]
+        self.assertEqual(declined_entry["decision"], "rejected")
+        self.assertIn("DECLINED_PAIR", [r["code"] for r in declined_entry["reasons"]])
+
+    def test_8_audit_log_records_every_candidate_and_top_matched_registration(self):
+        """8. Audit log: every pool candidate has exactly one entry; matched_registration is the top-ranked candidate; accepted entries carry rank and preference_score."""
+        bride = self._make_reg("bride8@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom_rej = self._make_reg("groom8_rej@test.com", Registration.Gender.GROOM, "Kashyapa", "Sitapur", dob=date(1993, 1, 1))
+        groom_ok = self._make_reg("groom8_ok@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        run_matching_engine(bride)
+        log = MatchAttemptLog.objects.filter(registration=bride).first()
+        self.assertEqual(log.outcome, MatchAttemptLog.Outcome.MATCHED)
+        self.assertEqual(log.matched_registration.pk, groom_ok.pk)
+
+        self.assertEqual(len(log.candidates_considered), 2)
+        refs = [c["candidate_reference"] for c in log.candidates_considered]
+        self.assertIn(groom_rej.reference, refs)
+        self.assertIn(groom_ok.reference, refs)
+
+        ok_entry = [c for c in log.candidates_considered if c["candidate_reference"] == groom_ok.reference][0]
+        self.assertEqual(ok_entry["decision"], "accepted")
+        self.assertEqual(ok_entry["rank"], 1)
+        self.assertIn("preference_score", ok_entry)
+
+    def test_9_n_plus_1_queries_independent_of_pool_size(self):
+        """9. N+1: query count does not grow linearly with the candidate pool size."""
+        bride = self._make_reg("bride9@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+
+        for i in range(5):
+            self._make_reg(f"groom9_{i}@test.com", Registration.Gender.GROOM, "Kashyapa", f"Mool{i}", dob=date(1993, 1, 1))
+
+        with self.assertNumQueries(4):
+            run_matching_engine(bride)
+
+        for i in range(5, 10):
+            self._make_reg(f"groom9_{i}@test.com", Registration.Gender.GROOM, "Kashyapa", f"Mool{i}", dob=date(1993, 1, 1))
+
+        # Still exactly 4 queries during evaluation
+        with self.assertNumQueries(4):
+            run_matching_engine(bride)
+
+    def test_10_missing_moolgram_and_missing_dob_rules(self):
+        """10. Missing moolgram still yields NEEDS_REVIEW on accepted candidates; missing DOB still rejects with GROOM_YOUNGER / 'date of birth missing'."""
+        bride = self._make_reg("bride10@test.com", Registration.Gender.BRIDE, "Kashyapa", "", dob=date(1995, 6, 15))
+        groom_mool = self._make_reg("groom10_m@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+        # Note: In Mongo backend, candidate_dob is non-nullable on the model schema, so we test
+        # missing DOB via candidate profile / evaluate path or with candidate_dob=None where allowed
+        groom_dob = _make_registration(
+            reference="SG-NODOB0",
+            candidate_full_name="No DOB Groom",
+            candidate_gender=Registration.Gender.GROOM,
+            verification_status=Registration.VerificationStatus.VERIFIED,
+            candidate_dob=None,
+            gotra="Bharadwaja",
+            mool_gram="Sitapur",
+        )
+        groom_dob.save = lambda *args, **kwargs: None  # mock save to bypass DB non-null check in Mongo
+
+        result = run_matching_engine(bride)
+        log = MatchAttemptLog.objects.filter(registration=bride).first()
+        considered = log.candidates_considered
+
+        mool_entry = [c for c in considered if c["candidate_reference"] == groom_mool.reference][0]
+        self.assertEqual(mool_entry["decision"], "accepted")
+        self.assertIn("NEEDS_REVIEW", [r["code"] for r in mool_entry["reasons"]])
+
+        # Test _age_reason directly with None DOB
+        from registrations.matching_engine import _build_profile, _age_reason, REASON_AGE
+        me_prof = _build_profile(bride)
+        nodob_prof = _build_profile(groom_dob)
+        age_res = _age_reason(me_prof, nodob_prof)
+        self.assertIsNotNone(age_res)
+        self.assertEqual(age_res[0], REASON_AGE)
+        self.assertEqual(age_res[1], "date of birth missing")
+
+    def test_11_matching_shim_delegates_correctly(self):
+        """11. The matching.py shim still imports and delegates correctly."""
+        from registrations import matching
+
+        bride1 = self._make_reg("bride11_1@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        groom1 = self._make_reg("groom11_1@test.com", Registration.Gender.GROOM, "Atri", "Sitapur", dob=date(1993, 1, 1))
+
+        matches = matching.find_matches_for(bride1)
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].pk, groom1.pk)
+
+        bride2 = self._make_reg("bride11_2@test.com", Registration.Gender.BRIDE, "Kashyapa", "Rampur", dob=date(1995, 6, 15))
+        proposal = matching.create_automated_proposal(bride2)
+        self.assertIsNotNone(proposal)
+        self.assertEqual(proposal.registration.pk, bride2.pk)
+
 

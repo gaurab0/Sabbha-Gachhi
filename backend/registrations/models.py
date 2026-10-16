@@ -207,6 +207,15 @@ class MatchProposal(models.Model):
 # ---------------------------------------------------------------------------
 
 class MatchAttemptLog(models.Model):
+    """
+    MatchAttemptLog — records every matching decision the automated engine
+    makes, whether or not it resulted in a proposal. This is the accountability
+    trail for a system that runs with no human review step.
+
+    Note: matched_registration records the top-ranked (best) match only.
+    The full set of all accepted, rejected, and capped candidates lives
+    in candidates_considered.
+    """
 
     class Outcome(models.TextChoices):
         MATCHED = "matched", "Matched"
@@ -219,6 +228,7 @@ class MatchAttemptLog(models.Model):
     outcome = models.CharField(max_length=30, choices=Outcome.choices)
 
     # The registration that was ultimately chosen, if any.
+    # Note: Records the top-ranked match only; full set lives in candidates_considered.
     matched_registration = models.ForeignKey(
         Registration,
         on_delete=models.SET_NULL,
@@ -262,6 +272,8 @@ class Match(models.Model):
         on_delete=models.CASCADE,
         related_name="matches_as_candidate",
     )
+    # Lower is better (0.0 = perfect match on preferences).
+    # Used solely as internal tie-breaker; never exposed to end users.
     score = models.FloatField(default=0.0)
     matched_on = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
@@ -270,13 +282,32 @@ class Match(models.Model):
         default=Status.PENDING,
     )
 
+    # Normalized unordered pair identifiers: sorted([str(reg_id), str(cand_id)])
+    # Enforces database-level uniqueness across both (A, B) and (B, A).
+    pair_low_id = models.CharField(max_length=64, db_index=True, blank=True, default="")
+    pair_high_id = models.CharField(max_length=64, db_index=True, blank=True, default="")
+
     class Meta:
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["matched_on"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pair_low_id", "pair_high_id"],
+                name="unique_unordered_match_pair",
+            ),
+        ]
         verbose_name = "Match"
         verbose_name_plural = "Matches"
+
+    def save(self, *args, **kwargs):
+        if not self.pair_low_id or not self.pair_high_id:
+            reg_id = str(self.registration_id or (self.registration.pk if self.registration else ""))
+            cand_id = str(self.candidate_id or (self.candidate.pk if self.candidate else ""))
+            if reg_id and cand_id:
+                self.pair_low_id, self.pair_high_id = sorted([reg_id, cand_id])
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Match {self.registration.reference} ↔ {self.candidate.reference} (score={self.score})"
