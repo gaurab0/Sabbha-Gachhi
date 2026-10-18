@@ -1,3 +1,6 @@
+import { PhotoFrame } from "../PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../../lib/photos";
+
 const traditionFaq = [
   {
     term: "What is the Sabha?",
@@ -50,20 +53,32 @@ export function Tradition() {
             </p>
           </div>
         </div>
-        <dl className="m-0 flex flex-col gap-[2.1rem]">
-          {traditionFaq.map((item) => (
-            <div
-              key={item.term}
-              className="border-t border-border pt-[1.15rem]">
-              <dt className="font-sans text-[0.75rem] font-semibold tracking-widest text-text/75 uppercase">
-                {item.term}
-              </dt>
-              <dd className="m-0 mt-[0.55rem] text-base leading-[1.65] text-text/88">
-                {item.detail}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <div className="flex flex-col gap-[2.2rem]">
+          <PhotoFrame
+            src={photoSrc(PHOTOS.hastamelap)}
+            srcSet={photoSrcSet(PHOTOS.hastamelap)}
+            alt={PHOTOS.hastamelap.alt}
+            width={PHOTOS.hastamelap.width}
+            height={PHOTOS.hastamelap.height}
+            aspectRatio="4/3"
+            sizes="(max-width: 768px) 100vw, 38vw"
+            caption="The hastamelap — families joined, records honoured."
+          />
+          <dl className="m-0 flex flex-col gap-[2.1rem]">
+            {traditionFaq.map((item) => (
+              <div
+                key={item.term}
+                className="border-t border-border pt-[1.15rem]">
+                <dt className="font-sans text-[0.75rem] font-semibold tracking-widest text-text/75 uppercase">
+                  {item.term}
+                </dt>
+                <dd className="m-0 mt-[0.55rem] text-base leading-[1.65] text-text/88">
+                  {item.detail}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </div>
     </section>
   );

@@ -23,6 +23,7 @@ export interface MeResponse {
   phone_masked: string | null;
   phone_country: string | null;
   verification_method: "link" | "otp";
+  phone_verification_required: boolean;
 }
 
 export function getAccessToken(): string | null {

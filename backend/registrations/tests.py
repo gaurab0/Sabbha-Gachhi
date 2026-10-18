@@ -8,7 +8,12 @@ Tests cover:
 """
 
 from datetime import date
+import io
+import os
+import shutil
+import tempfile
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -1145,5 +1150,121 @@ class TestAutomatedMatchingEngineBugFixes(TestCase):
         proposal = matching.create_automated_proposal(bride2)
         self.assertIsNotNone(proposal)
         self.assertEqual(proposal.registration.pk, bride2.pk)
+
+
+def _png_bytes() -> bytes:
+    """A tiny, genuinely-decodable PNG for upload tests."""
+    from PIL import Image as _Image
+
+    buf = io.BytesIO()
+    _Image.new("RGB", (2, 2), (200, 100, 50)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class TestCandidatePhotoUpload(TestCase):
+    """POST /api/registrations/photo/ — auth gate, validation, storage."""
+
+    def setUp(self):
+        self._media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self._media, ignore_errors=True)
+        override = override_settings(MEDIA_ROOT=self._media)
+        override.enable()
+        self.addCleanup(override.disable)
+        self.user = _make_verified_user(f'photo-{_unique("u")}@example.com')
+
+    def _client(self, authenticated=True):
+        client = APIClient()
+        if authenticated:
+            client.force_authenticate(user=self.user)
+        return client
+
+    def _upload(self, file, authenticated=True):
+        return self._client(authenticated).post(
+            '/api/registrations/photo/', {'photo': file}, format='multipart',
+        )
+
+    def test_requires_authentication(self):
+        data = SimpleUploadedFile('a.png', _png_bytes(), content_type='image/png')
+        self.assertEqual(self._upload(data, authenticated=False).status_code, 401)
+
+    def test_stores_valid_png_and_returns_media_url(self):
+        data = SimpleUploadedFile('a.png', _png_bytes(), content_type='image/png')
+        response = self._upload(data)
+        self.assertEqual(response.status_code, 201)
+        url = response.data['photo_url']
+        self.assertTrue(url.startswith('/media/candidate_photos/'), url)
+        rel = url[len('/media/'):]
+        self.assertTrue(os.path.exists(os.path.join(self._media, *rel.split('/'))))
+
+    def test_rejects_unsupported_content_type(self):
+        data = SimpleUploadedFile('a.gif', b'GIF89a', content_type='image/gif')
+        self.assertEqual(self._upload(data).status_code, 400)
+
+    def test_rejects_oversized_file(self):
+        big = b'\x00' * (5 * 1024 * 1024 + 1)
+        data = SimpleUploadedFile('big.png', big, content_type='image/png')
+        self.assertEqual(self._upload(data).status_code, 400)
+
+    def test_rejects_non_image_bytes(self):
+        data = SimpleUploadedFile('fake.png', b'not really a png', content_type='image/png')
+        self.assertEqual(self._upload(data).status_code, 400)
+
+    def test_missing_file_is_rejected(self):
+        response = self._client().post('/api/registrations/photo/', {}, format='multipart')
+        self.assertEqual(response.status_code, 400)
+
+
+class TestRegistrationPhotoPersistence(TestCase):
+    """candidate_photo is accepted, validated, and stored by the registration POST."""
+
+    def _payload(self, **overrides):
+        payload = {
+            'language': 'en',
+            'guardian_name': 'Guardian',
+            'guardian_relation_to_candidate': 'Father',
+            'guardian_village': 'Village',
+            'guardian_district': 'District',
+            'guardian_phone': '+9779800000000',
+            'guardian_email': 'guardian@example.com',
+            'candidate_full_name': 'Candidate',
+            'candidate_gender': 'Bride',
+            'candidate_dob': '1995-06-15',
+            'candidate_education': 'Engineering',
+            'candidate_occupation': 'Engineer',
+            'candidate_current_city': 'Patna',
+            'candidate_photo': '/media/candidate_photos/abc.png',
+            'gotra': 'Kashyapa',
+            'mool_gram': 'Rampur',
+            'paternal_line': [],
+            'maternal_line': [],
+            'consent_choice': 'agree',
+            'consent_own_words': 'I agree to this registration.',
+        }
+        payload.update(overrides)
+        return payload
+
+    def _post(self, **overrides):
+        user = _make_verified_user(f'reg-photo-{_unique("u")}@example.com')
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.post(
+            '/api/registrations/', self._payload(**overrides), format='json',
+        )
+        return user, response
+
+    def test_photo_url_is_persisted(self):
+        user, response = self._post()
+        self.assertEqual(response.status_code, 201)
+        reg = Registration.objects.get(owner=user)
+        self.assertEqual(reg.candidate_photo, '/media/candidate_photos/abc.png')
+
+    def test_photo_is_optional(self):
+        user, response = self._post(candidate_photo='')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Registration.objects.get(owner=user).candidate_photo, '')
+
+    def test_unsafe_photo_scheme_is_rejected(self):
+        _, response = self._post(candidate_photo='javascript:alert(1)')
+        self.assertEqual(response.status_code, 400)
 
 

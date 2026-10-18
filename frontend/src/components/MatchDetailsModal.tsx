@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Modal from './Modal'
+import { resolveMediaUrl } from '../api/client'
 import { fetchMatchContact, respondToMatchProposal } from '../api/registration'
 import type { MatchContactResponse, MatchProposalResponse } from '../api/registration'
 
@@ -54,9 +55,17 @@ export default function MatchDetailsModal({
   const [working, setWorking] = useState(false)
   const [confirmingDecline, setConfirmingDecline] = useState(false)
   const [photoFailed, setPhotoFailed] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
   const [enlarged, setEnlarged] = useState(false)
   const [copiedField, setCopiedField] = useState<'email' | 'phone' | null>(null)
   const copyTimer = useRef<number | null>(null)
+
+  // A fresh contact payload means a possibly-new photo: re-attempt loading it.
+  const applyContact = useCallback((data: MatchContactResponse) => {
+    setPhotoFailed(false)
+    setImgLoaded(false)
+    setContact(data)
+  }, [])
 
   const loadContact = useCallback(() => {
     setContactLoading(true)
@@ -64,10 +73,10 @@ export default function MatchDetailsModal({
     // Contact details live in component state only: fetched on demand,
     // never cached in localStorage, never logged.
     fetchMatchContact(matchId)
-      .then((data) => setContact(data))
+      .then(applyContact)
       .catch(() => setContactError(true))
       .finally(() => setContactLoading(false))
-  }, [matchId])
+  }, [matchId, applyContact])
 
   useEffect(() => {
     // The /contact/ endpoint succeeds for any verified user — it returns the
@@ -79,7 +88,7 @@ export default function MatchDetailsModal({
     let cancelled = false
     fetchMatchContact(matchId)
       .then((data) => {
-        if (!cancelled) setContact(data)
+        if (!cancelled) applyContact(data)
       })
       .catch(() => {
         if (!cancelled) setContactError(true)
@@ -90,7 +99,7 @@ export default function MatchDetailsModal({
     return () => {
       cancelled = true
     }
-  }, [matchId])
+  }, [matchId, applyContact])
 
   useEffect(() => {
     const timer = copyTimer.current
@@ -126,7 +135,8 @@ export default function MatchDetailsModal({
     }
   }
 
-  const showPhoto = contact && contact.photo_url && !photoFailed
+  const showPhoto = Boolean(contact && contact.photo_url && !photoFailed)
+  const photoSrc = resolveMediaUrl(contact?.photo_url)
 
   return (
     <Modal labelledBy="match-details-title" onClose={onClose}>
@@ -159,15 +169,23 @@ export default function MatchDetailsModal({
           <button
             type="button"
             onClick={() => setEnlarged(true)}
-            className="p-0 border-0 bg-transparent cursor-zoom-in"
+            className="relative p-0 border-0 bg-transparent cursor-zoom-in"
             aria-label="Enlarge candidate photo"
           >
+            {!imgLoaded && (
+              <span
+                className="absolute inset-0 rounded-lg bg-border/60 animate-pulse"
+                role="status"
+                aria-label="Loading photo"
+              />
+            )}
             <img
-              src={contact.photo_url}
+              src={photoSrc}
               alt="Photo of proposed match"
               loading="lazy"
+              onLoad={() => setImgLoaded(true)}
               onError={() => setPhotoFailed(true)}
-              className="w-36 h-44 object-cover rounded-lg border border-border"
+              className={`w-36 h-44 object-cover rounded-lg border border-border transition-opacity duration-200 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           </button>
         ) : (
@@ -195,7 +213,7 @@ export default function MatchDetailsModal({
         >
           <div className="relative bg-bg border border-border p-3 max-w-full">
             <img
-              src={contact.photo_url}
+              src={photoSrc}
               alt="Photo of proposed match, enlarged"
               className="max-h-[75vh] max-w-[85vw] object-contain"
             />

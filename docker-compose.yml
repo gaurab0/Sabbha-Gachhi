@@ -1,0 +1,36 @@
+include:
+  - path: frontend/compose.yml
+  - path: backend/compose.yml
+  - path: data/compose.yml
+
+services:
+  frontend:
+    depends_on:
+      backend:
+        condition: service_healthy
+  migrate:
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  backend:
+    environment:
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+  worker:
+    environment:
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully

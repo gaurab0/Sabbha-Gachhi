@@ -10,16 +10,18 @@ from django.db import migrations, models
 def drop_match_collection(apps, schema_editor):
     """Drop the stale Match collection left over from prior failed
     migration attempts. Uses a fresh PyMongo client to bypass any
-    Django connection caching that may hide the collection.
+    Django connection caching that may hide the collection, but builds
+    the URI from the configured DATABASES entry so it works in Docker
+    (host `mongo`, authenticated) instead of assuming localhost.
     """
+    from django.conf import settings
     from pymongo import MongoClient
-    client = MongoClient("mongodb://localhost:27017/")
-    for db_name in client.list_database_names():
-        if db_name in ("local", "config"):
-            continue
-        db = client[db_name]
-        if "registrations_match" in db.list_collection_names():
-            db.command("drop", "registrations_match")
+
+    db_settings = settings.DATABASES["default"]
+    client = MongoClient(db_settings["HOST"])
+    db = client[db_settings["NAME"]]
+    if "registrations_match" in db.list_collection_names():
+        db.command("drop", "registrations_match")
     client.close()
 
 

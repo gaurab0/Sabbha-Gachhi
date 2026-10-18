@@ -7,6 +7,7 @@ to the verify screen. Unauthenticated requests return False so the standard
 401 path still applies.
 """
 
+from django.conf import settings
 from rest_framework.permissions import BasePermission
 
 from .exceptions import EmailNotVerified, PhoneNotVerified
@@ -48,6 +49,10 @@ class RequireFullyVerified(BasePermission):
             return False
         if not getattr(user, "email_verified", False):
             raise EmailNotVerified(RequireVerifiedEmail.message)
+        # Phone gating is phase-2. While PHONE_VERIFICATION_REQUIRED is off
+        # the gate is email-only, so the app is fully usable without a phone.
+        if not getattr(settings, "PHONE_VERIFICATION_REQUIRED", True):
+            return True
         if not getattr(user, "phone_verified", False):
             raise PhoneNotVerified(RequireVerifiedPhone.message)
         return True

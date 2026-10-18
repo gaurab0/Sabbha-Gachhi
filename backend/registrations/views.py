@@ -1,6 +1,10 @@
 import logging
+import uuid
 
+from django.conf import settings
+from django.core.files.storage import default_storage
 from django.shortcuts import render
+from PIL import Image, UnidentifiedImageError
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -40,6 +44,62 @@ class RegistrationCreateView(APIView):
         )
 
 
+class CandidatePhotoUploadView(APIView):
+    """POST /api/registrations/photo/ — multipart field `photo`.
+
+    Stores an optional candidate photo under MEDIA_ROOT and returns its URL so
+    the browser can attach it to the (JSON) registration POST as
+    `candidate_photo`. The file is never served publicly: the match-proposal
+    contact endpoint is the only reader, and it only returns the *other*
+    family's photo once a proposal exists between the two registrations.
+    """
+
+    permission_classes = [IsAuthenticated, RequireVerifiedEmail]
+
+    # Mirrors the frontend guard in RegistrationFlow.tsx (ACCEPTED_PHOTO_TYPES /
+    # MAX_PHOTO_BYTES) so an oversized or wrong-typed file is rejected server-side.
+    MAX_PHOTO_BYTES = 5 * 1024 * 1024
+    ALLOWED_PHOTO_TYPES = {"image/jpeg": ".jpg", "image/png": ".png"}
+
+    def post(self, request):
+        upload = request.FILES.get("photo")
+        if upload is None:
+            return Response(
+                {"detail": "No photo was uploaded."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ext = self.ALLOWED_PHOTO_TYPES.get(upload.content_type)
+        if ext is None:
+            return Response(
+                {"detail": "Only JPG and PNG images are supported."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if upload.size > self.MAX_PHOTO_BYTES:
+            return Response(
+                {"detail": "That photo is larger than 5MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Content-Type is client-supplied; confirm the bytes really decode as
+        # an image before we store anything.
+        try:
+            Image.open(upload).verify()
+        except (UnidentifiedImageError, OSError):
+            return Response(
+                {"detail": "That file is not a valid image."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        upload.seek(0)
+        saved_name = default_storage.save(
+            f"candidate_photos/{uuid.uuid4().hex}{ext}", upload
+        )
+        # FileSystemStorage joins with os.sep; normalize for URLs on Windows.
+        saved_name = saved_name.replace("\\", "/")
+        return Response(
+            {"photo_url": f"{settings.MEDIA_URL}{saved_name}"},
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class MyRegistrationStatusView(APIView):
     """GET /api/registrations/me/status/ — uses the authenticated owner."""
 
@@ -51,6 +111,7 @@ class MyRegistrationStatusView(APIView):
             payload = {
                 "email_verified": False,
                 "registration": None,
+                "matches": [],
             }
             if registration is not None:
                 payload.update(RegistrationStatusSerializer(registration).data)

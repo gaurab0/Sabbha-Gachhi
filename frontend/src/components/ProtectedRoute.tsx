@@ -20,14 +20,15 @@ export function VerifiedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /** Email-then-phone gate (same order as the backend). Email gaps go to
- * /verify-email, phone gaps to /verify-phone. */
+ * /verify-email. The phone step is skipped entirely unless the server reports
+ * phone_verification_required (phase-2 feature toggle). */
 export function FullyVerifiedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, emailVerified, phoneVerified } = useAuth();
+  const { isAuthenticated, emailVerified, phoneVerified, phoneVerificationRequired } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (emailVerified === null || phoneVerified === null) {
+  if (emailVerified === null || phoneVerified === null || phoneVerificationRequired === null) {
     return <p style={{ padding: 32 }}>Checking verification…</p>;
   }
   if (!emailVerified) return <Navigate to="/verify-email" replace />;
-  if (!phoneVerified) return <Navigate to="/verify-phone" replace />;
+  if (phoneVerificationRequired && !phoneVerified) return <Navigate to="/verify-phone" replace />;
   return <>{children}</>;
 }

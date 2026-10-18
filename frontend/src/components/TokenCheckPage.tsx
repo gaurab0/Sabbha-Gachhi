@@ -1,8 +1,16 @@
+import StatusPage from "./StatusPage";
+import ErrorBoundary from "./ErrorBoundary";
+
 /**
  * TokenCheckPage — the /status-check route.
  *
- * This was a byte-identical duplicate of StatusPage.tsx. It now re-exports
- * the canonical component so both routes share one implementation and one
- * set of behaviors (details modal, withdraw dialog, verification gating).
+ * Renders StatusPage protected by an ErrorBoundary so unexpected runtime
+ * exceptions in the status subtree cannot blank the entire page.
  */
-export { default } from "./StatusPage";
+export default function TokenCheckPage() {
+  return (
+    <ErrorBoundary>
+      <StatusPage />
+    </ErrorBoundary>
+  );
+}

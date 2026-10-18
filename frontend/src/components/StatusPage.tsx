@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   fetchMyRegistrationStatus,
@@ -16,33 +16,56 @@ interface StatusPageProps {
 export default function StatusPage({ onReportConcern }: StatusPageProps) {
   const [status, setStatus] = useState<RegistrationStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   const [withdrawing, setWithdrawing] = useState(false)
   const [confirmingWithdraw, setConfirmingWithdraw] = useState(false)
   const [withdrawn, setWithdrawn] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState<MatchProposalResponse | null>(null)
 
+  const reload = useCallback(() => {
+    setLoading(true)
+    setLoadError(null)
+    setNotFound(false)
+    setRetryCount((c) => c + 1)
+  }, [])
+
   useEffect(() => {
+    let ignore = false
     fetchMyRegistrationStatus()
       .then((data) => {
+        if (ignore) return
         setStatus(data)
         // The backend now returns withdrawn registrations instead of 404ing
         // them, so a reload after withdrawing still reflects reality rather
         // than falling into the "notFound" branch below.
-        if (data.withdrawn) {
+        if (data?.withdrawn) {
           setWithdrawn(true)
         }
       })
       .catch((err) => {
+        if (ignore) return
         if (err instanceof ApiError && err.status === 404) {
           setNotFound(true)
+        } else if (err instanceof ApiError && err.status === 401) {
+          setLoadError('Your session seems to have expired. Please log in again.')
         } else {
           console.error('Failed to load status:', err)
+          setLoadError('Unable to load registration status. Please check your connection and try again.')
         }
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [retryCount])
 
   const handleWithdrawConfirmed = async (reason: string) => {
     setWithdrawing(true)
@@ -78,9 +101,10 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
   const handleMatchResponded = (updated: MatchProposalResponse) => {
     setStatus((prev) => {
       if (!prev) return prev
+      const currentMatches = prev.matches ?? []
       return {
         ...prev,
-        matches: prev.matches.map((m) => (m.id === updated.id ? updated : m)),
+        matches: currentMatches.map((m) => (m.id === updated.id ? updated : m)),
       }
     })
     setDetailsOpen(null) // close modal after respond
@@ -100,7 +124,39 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
     return shell(<p className="text-body">Loading your registration…</p>)
   }
 
-  if (notFound) {
+  if (loadError) {
+    return shell(
+      <>
+        <p className="text-caption text-text/60 tracking-wider mb-3">Error</p>
+        <h1 className="text-heading text-primary mb-4">Something went wrong</h1>
+        <p className="text-body leading-relaxed mb-8">{loadError}</p>
+        <div className="flex gap-4">
+          <button type="button" className="btn-primary" onClick={reload}>
+            Try again
+          </button>
+          <Link to="/" className="btn-outline">
+            Back home
+          </Link>
+        </div>
+      </>
+    )
+  }
+
+  if (status?.email_verified === false) {
+    return shell(
+      <>
+        <p className="text-caption text-text/60 tracking-wider mb-3">Email verification required</p>
+        <h1 className="text-heading text-primary mb-4">Please verify your email</h1>
+        <p className="text-body leading-relaxed mb-8">
+          Your email address needs to be verified before your registration status can be displayed.
+        </p>
+        <Link to="/verify-email" className="btn-primary">Verify your email</Link>
+      </>
+    )
+  }
+
+  const hasRegistration = Boolean(status?.reference || status?.candidate_name)
+  if (notFound || (status && !hasRegistration)) {
     return shell(
       <>
         <p className="text-caption text-text/60 tracking-wider mb-3">No registration yet</p>
@@ -116,7 +172,16 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
 
   if (!status) {
     return shell(
-      <p className="text-body">Something went wrong loading your status. Please try again.</p>
+      <>
+        <p className="text-caption text-text/60 tracking-wider mb-3">No registration found</p>
+        <h1 className="text-heading text-primary mb-4">Unable to find registration status</h1>
+        <p className="text-body leading-relaxed mb-8">
+          Something went wrong loading your status. Please try again.
+        </p>
+        <button type="button" className="btn-primary" onClick={reload}>
+          Try again
+        </button>
+      </>
     )
   }
 
@@ -135,19 +200,20 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
   }
 
   const canViewDetails = status.verification_status === 'verified'
+  const matches = status.matches ?? []
 
   return shell(
     <>
       <p className="text-caption text-text/60 tracking-wider mb-3">Registration</p>
-      <h1 className="text-heading text-primary mb-2">{status.candidate_name}</h1>
+      <h1 className="text-heading text-primary mb-2">{status.candidate_name || 'Candidate'}</h1>
       <p className="text-body text-text/70 mb-8">
-        Reference {status.reference} · Registered by {status.guardian_name}
+        Reference {status.reference || '—'} · Registered by {status.guardian_name || 'Guardian'}
       </p>
 
       <div className="border-t border-t-border py-8">
         <div className="flex items-center justify-between border border-border px-5 py-4 mb-4">
           <span className="text-body">Verification status</span>
-          <VerificationBadge status={status.verification_status} />
+          <VerificationBadge status={status.verification_status ?? 'pending'} />
         </div>
         {status.verification_status === 'pending' && (
           <p className="text-body text-text/70 leading-relaxed">
@@ -159,11 +225,11 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
 
       <div className="border-t border-t-border py-8">
         <h2 className="text-body font-semibold mb-4">
-          Proposed match{status.matches.length !== 1 ? 'es' : ''} ({status.matches.length})
+          Proposed match{matches.length !== 1 ? 'es' : ''} ({matches.length})
         </h2>
-        {status.matches.length > 0 ? (
+        {matches.length > 0 ? (
           <div className="space-y-4">
-            {status.matches.map((match) => (
+            {matches.map((match) => (
               <MatchPreview
                 key={match.id}
                 match={match}
@@ -205,9 +271,9 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
         {confirmingWithdraw && (
           <ConfirmWithdrawDialog
             matchState={
-              status.matches.some((m) => m.state === 'both_accepted')
+              matches.some((m) => m?.state === 'both_accepted')
                 ? 'both_accepted'
-                : status.matches.some((m) => m.state === 'waiting_you' || m.state === 'waiting_other')
+                : matches.some((m) => m?.state === 'waiting_you' || m?.state === 'waiting_other')
                 ? 'waiting_you'
                 : null
             }
@@ -237,7 +303,7 @@ export default function StatusPage({ onReportConcern }: StatusPageProps) {
   )
 }
 
-function VerificationBadge({ status }: { status: 'pending' | 'verified' }) {
+function VerificationBadge({ status }: { status?: 'pending' | 'verified' | string }) {
   const verified = status === 'verified'
   return (
     <span
@@ -267,16 +333,19 @@ function MatchPreview({
     both_accepted: 'Both families have accepted',
     declined: 'This proposal was declined',
   }
+  const details = match?.shared_details ?? []
   return (
     <div className="border border-border px-5 py-4">
-      <p className="text-caption text-text/60 mb-3">Shared by {match.shared_by_panjikar}</p>
-      <ul className="text-body leading-relaxed list-disc pl-5 mb-4">
-        {match.shared_details.map((line, i) => (
-          <li key={i}>{line}</li>
-        ))}
-      </ul>
+      <p className="text-caption text-text/60 mb-3">Shared by {match?.shared_by_panjikar || 'Panjikar'}</p>
+      {details.length > 0 && (
+        <ul className="text-body leading-relaxed list-disc pl-5 mb-4">
+          {details.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-body text-text/70 text-sm">{stateText[match.state]}</span>
+        <span className="text-body text-text/70 text-sm">{match?.state ? stateText[match.state] || match.state : ''}</span>
         <button
           type="button"
           className="btn-primary text-sm shrink-0"

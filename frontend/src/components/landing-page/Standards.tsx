@@ -1,3 +1,6 @@
+import { PhotoFrame } from "../PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../../lib/photos";
+
 const corePrinciples = [
   {
     title: "Dowry-Free Commitment",
@@ -27,6 +30,18 @@ export function Standards() {
             <br />
             Principles
           </h2>
+          <div className="mt-10 max-w-[300px] max-md:max-w-[340px]">
+            <PhotoFrame
+              src={photoSrc(PHOTOS.saptapadi)}
+              srcSet={photoSrcSet(PHOTOS.saptapadi)}
+              alt={PHOTOS.saptapadi.alt}
+              width={PHOTOS.saptapadi.width}
+              height={PHOTOS.saptapadi.height}
+              aspectRatio="2/3"
+              sizes="(max-width: 768px) 80vw, 300px"
+              caption="Seven steps, one vow — the saptapadi."
+            />
+          </div>
         </div>
         <div className="flex flex-col">
           {corePrinciples.map((item, i, arr) => (

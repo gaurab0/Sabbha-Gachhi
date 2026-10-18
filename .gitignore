@@ -2,6 +2,9 @@
 .env
 backend/.env
 *.env.local
+backups/
+data/mongo/keyfile
+data/mongo/keyfile.*
 
 # Python
 __pycache__/

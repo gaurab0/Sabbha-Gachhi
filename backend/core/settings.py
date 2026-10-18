@@ -56,7 +56,11 @@ if not SECRET_KEY:
             "outstanding JWTs and OTP hashes, forcing re-login and resend."
         )
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
 
 
 # Application definition
@@ -78,6 +82,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,8 +161,8 @@ SIMPLE_JWT = {
 DATABASES = {
     'default': {
         'ENGINE': 'django_mongodb_backend',
-        'HOST': 'mongodb://localhost:27017/',
-        'NAME': 'test_sabha_gachhi',
+        'HOST': os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/'),
+        'NAME': os.environ.get('MONGODB_DATABASE', 'test_sabha_gachhi'),
     }
 }
 
@@ -197,6 +202,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media (user-uploaded candidate photos). Kept out of version control; served
+# by the web server in production (see core/urls.py for the DEBUG-only dev
+# handler). Uploads are gated behind a match — only a family that shares a
+# proposal can ever fetch another candidate's photo.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Email
@@ -471,6 +484,10 @@ PHONE_OTP_EXPIRY_MINUTES = int(os.environ.get('PHONE_OTP_EXPIRY_MINUTES', '5'))
 PHONE_OTP_MAX_ATTEMPTS = int(os.environ.get('PHONE_OTP_MAX_ATTEMPTS', '5'))
 # Email must verify before phone OTPs are issued (recommended order).
 PHONE_REQUIRE_EMAIL_FIRST = os.environ.get('PHONE_REQUIRE_EMAIL_FIRST', 'true').lower() == 'true'
+# Master switch for phone verification (phase 2). False = email-only app:
+# RequireFullyVerified degrades to an email gate and the frontend skips the
+# phone step. Default true keeps the gate for tests/prod until phone ships.
+PHONE_VERIFICATION_REQUIRED = os.environ.get('PHONE_VERIFICATION_REQUIRED', 'true').lower() == 'true'
 # Per-day caps: per user, per destination number, per IP.
 PHONE_MAX_PER_USER_PER_DAY = int(os.environ.get('PHONE_MAX_PER_USER_PER_DAY', '5'))
 PHONE_MAX_PER_NUMBER_PER_DAY = int(os.environ.get('PHONE_MAX_PER_NUMBER_PER_DAY', '3'))
@@ -508,9 +525,19 @@ DLT_SENDER_ID = os.environ.get('DLT_SENDER_ID', '')
 
 DEFAULT_AUTO_FIELD = "django_mongodb_backend.fields.ObjectIdAutoField"
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    origin.strip()
+    for origin in os.environ.get(
+        'DJANGO_CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://127.0.0.1:5173',
+    ).split(',')
+    if origin.strip()
 ]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # ---------------------------------------------------------------------------
@@ -526,4 +553,23 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_IMPORTS = ('registrations.tasks',)
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_DISABLE_RATE_LIMITS = True 
-CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_ALWAYS_EAGER = os.environ.get(
+    'CELERY_TASK_ALWAYS_EAGER', 'true'
+).strip().lower() in ('1', 'true', 'yes', 'on')
+
+# Redis DB 2 is used for a shared cache in containers. Local development keeps
+# Django's per-process cache when DJANGO_CACHE_URL is not set.
+DJANGO_CACHE_URL = os.environ.get('DJANGO_CACHE_URL', '').strip()
+CACHES = {
+    'default': (
+        {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': DJANGO_CACHE_URL,
+        }
+        if DJANGO_CACHE_URL
+        else {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'sabha-gachhi-local',
+        }
+    ),
+}

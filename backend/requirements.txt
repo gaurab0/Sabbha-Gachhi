@@ -7,3 +7,6 @@ celery[redis]
 redis
 phonenumbers  # libphonenumber port: server-side E.164 parse + is_valid()
 python-dotenv  # loads backend/.env into the environment (settings.py)
+Pillow  # image validation for candidate photo uploads
+gunicorn==23.0.0  # production WSGI server
+whitenoise==6.9.0  # serve collected Django static assets

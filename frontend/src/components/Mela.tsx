@@ -1,3 +1,6 @@
+import { PhotoFrame } from "./PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../lib/photos";
+
 const melaDetails = [
   {
     label: "What",
@@ -35,6 +38,19 @@ export default function SaurathMelaPage() {
           to meet, consult the panjikars, and continue a tradition rooted
           in Maithil genealogy and community.
         </p>
+        <div className="mt-10 max-w-[860px]">
+          <PhotoFrame
+            src={photoSrc(PHOTOS.heroMandap)}
+            srcSet={photoSrcSet(PHOTOS.heroMandap)}
+            alt={PHOTOS.heroMandap.alt}
+            width={PHOTOS.heroMandap.width}
+            height={PHOTOS.heroMandap.height}
+            aspectRatio="16/9"
+            priority
+            sizes="(max-width: 768px) 100vw, 860px"
+            caption="The gachhi at Saurath — families gathering as they have for centuries."
+          />
+        </div>
       </section>
 
       <section className="border-t border-border py-16">
@@ -72,6 +88,18 @@ export default function SaurathMelaPage() {
               on knowing one's lineage before marriage.
             </p>
           </div>
+          <div className="mt-10 max-w-[620px]">
+            <PhotoFrame
+              src={photoSrc(PHOTOS.hastamelap)}
+              srcSet={photoSrcSet(PHOTOS.hastamelap)}
+              alt={PHOTOS.hastamelap.alt}
+              width={PHOTOS.hastamelap.width}
+              height={PHOTOS.hastamelap.height}
+              aspectRatio="4/3"
+              sizes="(max-width: 768px) 100vw, 620px"
+              caption="Lineage consulted, hands joined."
+            />
+          </div>
         </div>
       </section>
 
@@ -107,6 +135,18 @@ export default function SaurathMelaPage() {
               </li>
             ))}
           </ol>
+          <div className="mt-12 max-w-[860px]">
+            <PhotoFrame
+              src={photoSrc(PHOTOS.havan)}
+              srcSet={photoSrcSet(PHOTOS.havan)}
+              alt={PHOTOS.havan.alt}
+              width={PHOTOS.havan.width}
+              height={PHOTOS.havan.height}
+              aspectRatio="21/9"
+              sizes="(max-width: 768px) 100vw, 860px"
+              caption="A quiet place to listen, consult, and preserve a living tradition."
+            />
+          </div>
         </div>
       </section>
 

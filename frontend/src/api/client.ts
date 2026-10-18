@@ -1,5 +1,20 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
 
+/**
+ * Absolute URL for a backend-hosted asset (e.g. an uploaded candidate photo).
+ * Photo URLs are stored relative (`/media/...`); a bare `/media/...` in an
+ * <img src> would resolve against the frontend origin, not the API, so we
+ * prefix the API origin. Absolute http(s)/data URLs are returned untouched.
+ */
+export function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  const origin = /^[a-z][a-z0-9+.-]*:\/\//i.test(API_BASE_URL)
+    ? new URL(API_BASE_URL).origin
+    : window.location.origin;
+  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -53,8 +68,11 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const access = getStoredAccessToken();
+  // FormData must set its own multipart boundary — never force JSON here, or
+  // the browser/DRF will fail to parse the upload.
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string> || {}),
     ...(access ? { Authorization: `Bearer ${access}` } : {}),
   };

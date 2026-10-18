@@ -38,6 +38,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             "fields": (
                 "candidate_full_name", "candidate_gender", "candidate_dob",
                 "candidate_education", "candidate_occupation", "candidate_current_city",
+                "candidate_photo",
             )
         }),
         ("Partner preferences", {

@@ -7,6 +7,8 @@ export interface AuthContextValue {
   emailVerified: boolean | null;
   /** Null until /auth/me/ resolves; false blocks fully-verified pages. */
   phoneVerified: boolean | null;
+  /** Null until /auth/me/ resolves. When false, phone is not gated at all. */
+  phoneVerificationRequired: boolean | null;
   accessToken: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string) => Promise<boolean>;

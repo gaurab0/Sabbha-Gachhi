@@ -220,12 +220,14 @@
 
   /* Nav link: text color moves to maroon on hover */
   .nav-link {
+    position: relative;
     font-size: var(--text-caption);
     font-weight: 400;
     color: var(--color-text);
-    opacity: 0.7;
+    opacity: 0.75;
     text-decoration: none;
-    padding: 0.45rem 0.1rem;
+    padding: 0.45rem 0.15rem;
+    white-space: nowrap;
     transition:
       color var(--transition-ui),
       opacity var(--transition-ui);
@@ -240,6 +242,17 @@
     color: var(--color-primary);
     opacity: 1;
     font-weight: 600;
+  }
+
+  .nav-link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--color-primary);
+    border-radius: 1px;
   }
 
   /* Inline text link: maroon on hover, per site-wide link rule */

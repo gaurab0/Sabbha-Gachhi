@@ -210,6 +210,11 @@ class MeView(APIView):
                 # default (otp boxes vs link wording). Read-only signal;
                 # the server still accepts both payload shapes.
                 "verification_method": verification_method(),
+                # When false, the frontend must NOT gate on phone (phase-2
+                # feature is disabled for this deployment).
+                "phone_verification_required": bool(
+                    getattr(settings, "PHONE_VERIFICATION_REQUIRED", True)
+                ),
             }
         )
 

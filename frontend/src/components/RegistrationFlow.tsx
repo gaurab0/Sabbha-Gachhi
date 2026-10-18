@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { ApiError } from "../api/client";
-import { submitRegistration } from "../api/registration";
+import { submitRegistration, uploadCandidatePhoto } from "../api/registration";
 
 /**
  * RegistrationFlow
@@ -19,7 +19,8 @@ function buildRegistrationPayload(
   preferences: PartnerPreferences,
   lineage: Lineage,
   consent: ConsentState,
-  t: CopyStrings
+  t: CopyStrings,
+  candidatePhotoUrl: string
 ) {
   return {
     language,
@@ -35,6 +36,7 @@ function buildRegistrationPayload(
     candidate_education: candidate.education,
     candidate_occupation: candidate.occupation,
     candidate_current_city: candidate.currentCity,
+    candidate_photo: candidatePhotoUrl,
     preferred_age_min: preferences.ageMin ? Number(preferences.ageMin) : null,
     preferred_age_max: preferences.ageMax ? Number(preferences.ageMax) : null,
     preferred_location: preferences.location,
@@ -535,10 +537,11 @@ interface GuardianDetails {
 
 type Gender = "" | "Bride" | "Groom";
 
-/** A single uploaded photo. Mock-only — a real build would store a URL, not a data URL. */
+/** A single uploaded photo. `file` is what gets POSTed to /registrations/photo/. */
 interface CandidatePhoto {
   name: string;
   dataUrl: string;
+  file?: File;
 }
 
 interface CandidateDetails {
@@ -766,6 +769,13 @@ export default function RegistrationFlow(): React.ReactElement {
   const handleFinalSubmit = async () => {
     setSubmitting(true);
     try {
+      // Upload first (if any) so the registration POST can carry the URL. The
+      // photo stays private: it is only served back to a matched family.
+      let candidatePhotoUrl = "";
+      if (candidate.photo?.file) {
+        const uploaded = await uploadCandidatePhoto(candidate.photo.file);
+        candidatePhotoUrl = uploaded.photo_url;
+      }
       const payload = buildRegistrationPayload(
         language,
         guardian,
@@ -773,7 +783,8 @@ export default function RegistrationFlow(): React.ReactElement {
         preferences,
         lineage,
         consent,
-        t
+        t,
+        candidatePhotoUrl
       );
       const result = await submitRegistration(payload);
       setRegistrationId(result.reference);
@@ -1137,7 +1148,7 @@ function PhotoField({ photo, onChange, t }: PhotoFieldProps) {
     }
 
     setError(null);
-    onChange({ name: file.name, dataUrl: URL.createObjectURL(file) });
+    onChange({ name: file.name, dataUrl: URL.createObjectURL(file), file });
   };
 
   const removePhoto = () => {

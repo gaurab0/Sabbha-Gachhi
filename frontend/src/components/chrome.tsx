@@ -10,16 +10,16 @@ export function Navbar() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <header className="bg-bg border-b border-b-border shadow-xs">
-      <div className="container container--wide flex items-center justify-between gap-6 py-[0.85rem]">
+    <header className="bg-bg border-b border-b-border shadow-xs sticky top-0 z-40 backdrop-blur-xs bg-bg/95">
+      <div className="container container--wide flex items-center justify-between gap-4 py-3">
         <Link
           to="/"
-          className="font-serif whitespace-nowrap text-[1.2rem] font-medium tracking-[-0.01em] text-primary no-underline hover:text-primary-hover">
+          className="font-serif whitespace-nowrap text-[1.25rem] font-medium tracking-[-0.01em] text-primary no-underline hover:text-primary-hover shrink-0">
           <em>Sabha Gachhi</em>
         </Link>
         <nav
           aria-label="Primary navigation"
-          className="flex flex-wrap items-center gap-[1.4rem] font-sans max-sm:hidden">
+          className="hidden md:flex items-center gap-5 lg:gap-7 font-sans">
           <NavLink to="/about" className="nav-link">
             About
           </NavLink>
@@ -32,20 +32,29 @@ export function Navbar() {
           <NavLink to="/status-check" className="nav-link">
             Check Status
           </NavLink>
-          {isAuthenticated ? (
-            <button type="button" className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm" onClick={logout}>
-              Sign Out
-            </button>
-          ) : (
-            <>
-              <Link to="/login" className="btn-outline min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
-                Log In
-              </Link>
-              <Link to="/register" className="btn-primary min-h-[2.35rem] whitespace-nowrap px-[1.15rem] py-2 text-sm">
-                Request Invite
-              </Link>
-            </>
-          )}
+          <div className="flex items-center gap-2.5 ml-1 shrink-0">
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="btn-outline min-h-[2.25rem] whitespace-nowrap px-4 py-1.5 text-xs tracking-wide"
+                onClick={logout}>
+                Sign Out
+              </button>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="btn-outline min-h-[2.25rem] whitespace-nowrap px-4 py-1.5 text-xs tracking-wide">
+                  Log In
+                </Link>
+                <Link
+                  to="/register"
+                  className="btn-primary min-h-[2.25rem] whitespace-nowrap px-4 py-1.5 text-xs tracking-wide">
+                  Request Invite
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
         <button
           type="button"
@@ -53,7 +62,7 @@ export function Navbar() {
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
-          className="inline-flex cursor-pointer items-center justify-center rounded-md border border-border p-2 text-text sm:hidden">
+          className="inline-flex cursor-pointer items-center justify-center rounded-md border border-border p-2 text-text md:hidden">
           {menuOpen ? <XIcon size={20} /> : <ListIcon size={20} />}
         </button>
       </div>
@@ -61,7 +70,7 @@ export function Navbar() {
         <nav
           id="mobile-menu"
           aria-label="Mobile navigation"
-          className="border-t border-border shadow-xs font-sans sm:hidden">
+          className="border-t border-border shadow-xs font-sans md:hidden bg-bg">
           <div className="container container--wide flex flex-col gap-1 py-3">
             <NavLink to="/about" onClick={closeMenu} className="nav-link py-2 text-base">
               About
@@ -75,17 +84,29 @@ export function Navbar() {
             <NavLink to="/status-check" onClick={closeMenu} className="nav-link py-2 text-base">
               Check Status
             </NavLink>
-            <div className="mt-2 flex flex-col gap-2 pb-1">
+            <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3 pb-1">
               {isAuthenticated ? (
-                <button type="button" className="btn-outline min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm" onClick={() => { logout(); closeMenu(); }}>
+                <button
+                  type="button"
+                  className="btn-outline min-h-[2.5rem] w-full px-4 py-2 text-sm justify-center"
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                  }}>
                   Sign Out
                 </button>
               ) : (
                 <>
-                  <Link to="/login" onClick={closeMenu} className="btn-outline min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
+                  <Link
+                    to="/login"
+                    onClick={closeMenu}
+                    className="btn-outline min-h-[2.5rem] w-full px-4 py-2 text-sm justify-center">
                     Log In
                   </Link>
-                  <Link to="/register" onClick={closeMenu} className="btn-primary min-h-[2.35rem] w-full px-[1.15rem] py-2 text-sm">
+                  <Link
+                    to="/register"
+                    onClick={closeMenu}
+                    className="btn-primary min-h-[2.5rem] w-full px-4 py-2 text-sm justify-center">
                     Request Invite
                   </Link>
                 </>

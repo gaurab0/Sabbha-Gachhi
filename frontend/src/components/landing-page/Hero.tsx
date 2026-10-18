@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { PhotoFrame } from "../PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../../lib/photos";
 
 const heroProof = [
   {
@@ -71,6 +73,19 @@ export function Hero() {
               </div>
             ))}
           </dl>
+        </div>
+        <div className="mt-[clamp(2.5rem,6vw,4rem)]">
+          <PhotoFrame
+            src={photoSrc(PHOTOS.heroMandap)}
+            srcSet={photoSrcSet(PHOTOS.heroMandap)}
+            alt={PHOTOS.heroMandap.alt}
+            width={PHOTOS.heroMandap.width}
+            height={PHOTOS.heroMandap.height}
+            aspectRatio="16/9"
+            priority
+            sizes="(max-width: 768px) 100vw, 800px"
+            caption="Saurath Sabha Gachhi — where Maithil families have gathered beneath the gachhi for generations."
+          />
         </div>
       </div>
     </section>

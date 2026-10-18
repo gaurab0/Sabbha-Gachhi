@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isStaff, setIsStaff] = useState(false);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [phoneVerified, setPhoneVerifiedState] = useState<boolean | null>(null);
+  const [phoneVerificationRequired, setPhoneVerificationRequired] = useState<boolean | null>(null);
   const [accessToken, setAccessToken] = useState(() => getAccessToken());
 
   // On load (and token change), resolve verification state for route guards.
@@ -26,10 +27,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await fetchMe();
       setEmailVerified(me.email_verified);
       setPhoneVerifiedState(me.phone_verified);
+      setPhoneVerificationRequired(me.phone_verification_required);
       setIsStaff(me.is_staff);
     } catch {
       setEmailVerified(null);
       setPhoneVerifiedState(null);
+      setPhoneVerificationRequired(null);
     }
   };
 
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsStaff(false);
     setEmailVerified(null);
     setPhoneVerifiedState(null);
+    setPhoneVerificationRequired(null);
     setIsAuthenticated(false);
   };
 
@@ -77,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isStaff,
         emailVerified,
         phoneVerified,
+        phoneVerificationRequired,
         accessToken,
         login,
         signup,

@@ -11,6 +11,7 @@ import { Privacy } from "./components/landing-page/Privacy";
 import { Quotes } from "./components/landing-page/Quotes";
 import { Standards } from "./components/landing-page/Standards";
 import { Tradition } from "./components/landing-page/Tradition";
+import { MithilaDivider } from "./components/MithilaDivider";
 import { ConcernRoute } from "./routes/ConcernRoute";
 import { ProposalRoute } from "./routes/ProposalRoute";
 import { PublicLayout } from "./routes/PublicLayout";
@@ -27,10 +28,12 @@ function LandingPage() {
   return (
     <>
       <Hero />
+      <MithilaDivider />
       <Tradition />
       <Quotes />
       <HowItWorks />
       <Standards />
+      <MithilaDivider />
       <Privacy />
       <Cta />
     </>

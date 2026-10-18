@@ -1,3 +1,6 @@
+import { PhotoFrame } from "../PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../../lib/photos";
+
 const methodStages = [
   {
     stage: "Stage 01",
@@ -48,6 +51,18 @@ export function HowItWorks() {
             </li>
           ))}
         </ol>
+        <div className="mx-auto mt-14 max-w-3xl md:mt-16">
+          <PhotoFrame
+            src={photoSrc(PHOTOS.havan)}
+            srcSet={photoSrcSet(PHOTOS.havan)}
+            alt={PHOTOS.havan.alt}
+            width={PHOTOS.havan.width}
+            height={PHOTOS.havan.height}
+            aspectRatio="21/9"
+            sizes="(max-width: 768px) 100vw, 768px"
+            caption="Every introduction begins with ritual, consent, and verified lineage."
+          />
+        </div>
       </div>
     </section>
   );

@@ -64,6 +64,7 @@ class RegistrationCreateSerializer(serializers.ModelSerializer):
             "candidate_education",
             "candidate_occupation",
             "candidate_current_city",
+            "candidate_photo",
             "gotra",
             "mool_gram",
             "paternal_line",
@@ -92,6 +93,23 @@ class RegistrationCreateSerializer(serializers.ModelSerializer):
                 {"candidate_dob": f"The candidate must be at least {MIN_CANDIDATE_AGE} years old."}
             )
         return data
+
+    def validate_candidate_photo(self, value):
+        """Blank, an uploaded /media/ path, or an http(s) URL. Anything else
+        (javascript:, data:, etc.) is rejected so the field can't be used to
+        smuggle an unexpected scheme into an <img src>."""
+        value = (value or "").strip()
+        if not value:
+            return ""
+        if (
+            value.startswith("/media/")
+            or value.startswith("http://")
+            or value.startswith("https://")
+        ):
+            return value
+        raise serializers.ValidationError(
+            "Photo must be an uploaded file or a valid http(s) URL."
+        )
 
     def create(self, validated_data):
         paternal_data = validated_data.pop("paternal_line", [])

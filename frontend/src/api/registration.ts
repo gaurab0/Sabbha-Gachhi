@@ -16,6 +16,8 @@ export interface RegistrationPayload {
   candidate_education: string;
   candidate_occupation: string;
   candidate_current_city: string;
+  /** Relative URL returned by uploadCandidatePhoto, or "" when none was given. */
+  candidate_photo: string;
   preferred_age_min: number | null;
   preferred_age_max: number | null;
   preferred_location: string;
@@ -34,12 +36,15 @@ export interface RegistrationCreatedResponse {
 }
 
 export interface RegistrationStatusResponse {
-  reference: string;
-  candidate_name: string;
-  guardian_name: string;
-  verification_status: "pending" | "verified";
-  matches: MatchProposalResponse[];
-  withdrawn: boolean;
+  reference?: string;
+  candidate_name?: string;
+  guardian_name?: string;
+  verification_status?: "pending" | "verified";
+  matches?: MatchProposalResponse[];
+  withdrawn?: boolean;
+  withdrawn_at?: string | null;
+  email_verified?: boolean;
+  registration?: unknown;
 }
 
 export interface MatchProposalResponse {
@@ -83,6 +88,15 @@ export function submitRegistration(payload: RegistrationPayload) {
   return apiRequest<RegistrationCreatedResponse>("/registrations/", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function uploadCandidatePhoto(file: File) {
+  const form = new FormData();
+  form.append("photo", file);
+  return apiRequest<{ photo_url: string }>("/registrations/photo/", {
+    method: "POST",
+    body: form,
   });
 }
 

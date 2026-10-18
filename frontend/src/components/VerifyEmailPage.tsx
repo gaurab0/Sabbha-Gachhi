@@ -46,6 +46,9 @@ export function VerifyEmailPage() {
   const [meLoaded, setMeLoaded] = useState(false);
   const [meError, setMeError] = useState(false);
   const [meRetry, setMeRetry] = useState(0);
+  // Whether the server requires phone verification (phase-2 toggle). Default
+  // true so the legacy link path keeps its original behavior until /me loads.
+  const [phoneRequired, setPhoneRequired] = useState(true);
   const [cooldown, setCooldown] = useState(0);
   const [sending, setSending] = useState(false);
   // Single-flight guard: rapid clicks must not fire parallel requests.
@@ -73,9 +76,12 @@ export function VerifyEmailPage() {
           setOtpMode(me.verification_method === "otp");
         }
         setMeLoaded(true);
+        // Phone is a phase-2 step; only gate on it when the server says so.
+        const needPhone = me.phone_verification_required !== false;
+        setPhoneRequired(needPhone);
         // Verification order is email, then phone.
         if (me.email_verified) {
-          navigate(me.phone_verified ? "/" : "/verify-phone", { replace: true });
+          navigate(me.phone_verified || !needPhone ? "/" : "/verify-phone", { replace: true });
         }
       })
       // 401 (logged out / expired session) still routes to login; any
@@ -102,8 +108,15 @@ export function VerifyEmailPage() {
         await verifyEmail({ token: raw });
         setVerified();
         setStatus("success");
-        setMessage("Email verified. Taking you to phone verification…");
-        setTimeout(() => navigate("/verify-phone", { replace: true }), 1200);
+        setMessage(
+          phoneRequired
+            ? "Email verified. Taking you to phone verification…"
+            : "Email verified. Welcome!"
+        );
+        setTimeout(
+          () => navigate(phoneRequired ? "/verify-phone" : "/", { replace: true }),
+          1200
+        );
       } catch (err: any) {
         setStatus("error");
         const code = err?.body?.code as string | undefined;
@@ -116,7 +129,7 @@ export function VerifyEmailPage() {
         );
       }
     },
-    [navigate, setVerified]
+    [navigate, setVerified, phoneRequired]
   );
 
   useEffect(() => {
@@ -190,8 +203,15 @@ export function VerifyEmailPage() {
       await verifyEmail({ code: otp.join("") });
       setVerified();
       setStatus("success");
-      setMessage("Email verified. Taking you to phone verification…");
-      setTimeout(() => navigate("/verify-phone", { replace: true }), 1200);
+      setMessage(
+        phoneRequired
+          ? "Email verified. Taking you to phone verification…"
+          : "Email verified. Welcome!"
+      );
+      setTimeout(
+        () => navigate(phoneRequired ? "/verify-phone" : "/", { replace: true }),
+        1200
+      );
     } catch (err: any) {
       setStatus("error");
       const code = err?.body?.code as string | undefined;
@@ -222,7 +242,7 @@ export function VerifyEmailPage() {
   };
 
   if (emailVerified) {
-    navigate("/verify-phone", { replace: true });
+    navigate(phoneRequired ? "/verify-phone" : "/", { replace: true });
     return null;
   }
 

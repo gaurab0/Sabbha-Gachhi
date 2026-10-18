@@ -1,3 +1,6 @@
+import { PhotoFrame } from "./PhotoFrame";
+import { PHOTOS, photoSrc, photoSrcSet } from "../lib/photos";
+
 const supportPoints = [
   {
     title: "Support the panjikars",
@@ -65,6 +68,18 @@ export default function SupportPage() {
             <p className="text-body leading-relaxed">
               Your support helps make that care possible.
             </p>
+          </div>
+          <div className="mt-10 max-w-[620px]">
+            <PhotoFrame
+              src={photoSrc(PHOTOS.havan)}
+              srcSet={photoSrcSet(PHOTOS.havan)}
+              alt={PHOTOS.havan.alt}
+              width={PHOTOS.havan.width}
+              height={PHOTOS.havan.height}
+              aspectRatio="4/3"
+              sizes="(max-width: 768px) 100vw, 620px"
+              caption="Care passed on — the work behind every record."
+            />
           </div>
         </div>
       </section>

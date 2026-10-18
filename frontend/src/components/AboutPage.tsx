@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { PhotoFrame } from './PhotoFrame'
+import { PHOTOS, photoSrc, photoSrcSet } from '../lib/photos'
 
 export default function AboutPage() {
   return (
@@ -18,6 +20,28 @@ export default function AboutPage() {
           panjikars guiding the careful work of reviewing lineage and making
           introductions with discretion.
         </p>
+      </div>
+      <div className="mt-12 grid gap-5 sm:grid-cols-2">
+        <PhotoFrame
+          src={photoSrc(PHOTOS.hastamelap)}
+          srcSet={photoSrcSet(PHOTOS.hastamelap)}
+          alt={PHOTOS.hastamelap.alt}
+          width={PHOTOS.hastamelap.width}
+          height={PHOTOS.hastamelap.height}
+          aspectRatio="4/3"
+          sizes="(max-width: 640px) 100vw, 300px"
+          caption="The hastamelap — two families joined in trust."
+        />
+        <PhotoFrame
+          src={photoSrc(PHOTOS.havan)}
+          srcSet={photoSrcSet(PHOTOS.havan)}
+          alt={PHOTOS.havan.alt}
+          width={PHOTOS.havan.width}
+          height={PHOTOS.havan.height}
+          aspectRatio="4/3"
+          sizes="(max-width: 640px) 100vw, 300px"
+          caption="Ritual and consent anchor every introduction."
+        />
       </div>
       <div className="mt-10 flex flex-wrap gap-4">
         <Link to="/mela" className="btn-outline">Learn about Saurath Mela</Link>
